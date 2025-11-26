@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import time
 
 import typer
 
@@ -49,26 +50,34 @@ def optimize(
     if not resume_path.exists():
         raise typer.BadParameter(f"Resume file not found: {resume_path}")
 
+    start = time.perf_counter()
+    def log_step(message: str) -> None:
+        elapsed = time.perf_counter() - start
+        typer.echo(f"[{elapsed:5.2f}s] {message}")
+
     jd_text = load_job_description(job_description_file)
-    typer.echo("Parsing resume...")
+    log_step("Loaded job description.")
+    log_step("Parsing resume...")
     doc = parse_docx(str(resume_path))
     structure = extract_structure(doc)
+    log_step(f"Parsed resume with {len(structure.paragraphs)} paragraphs.")
 
-    typer.echo("Optimizing content...")
+    log_step("Optimizing content (calling LLM)...")
     changes = optimize_resume(structure, jd_text)
-    typer.echo(f"Modified {len(changes)} paragraphs")
+    log_step(f"LLM finished. Modified {len(changes)} paragraphs.")
 
-    typer.echo("Applying changes...")
+    log_step("Applying changes to DOCX...")
     apply_changes(doc, changes)
 
-    typer.echo("Saving DOCX...")
+    log_step("Saving DOCX...")
     docx_path = output_docx or str(Path(output_pdf).with_suffix(".docx"))
     save_docx(doc, docx_path)
+    log_step(f"DOCX saved to {docx_path}")
 
-    typer.echo("Exporting PDF...")
+    log_step("Exporting PDF via Word/docx2pdf...")
     export_pdf(doc, output_pdf)
-
-    typer.echo(f"Done! DOCX: {docx_path}  PDF: {output_pdf}")
+    log_step(f"PDF saved to {output_pdf}")
+    log_step("All steps completed.")
 
 
 if __name__ == "__main__":

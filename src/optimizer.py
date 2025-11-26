@@ -1,5 +1,6 @@
 import json
 from typing import Dict, List
+import time
 
 import httpx
 
@@ -18,6 +19,8 @@ def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0.3) ->
     if not OPENROUTER_API_KEY:
         raise ValueError("OPENROUTER_API_KEY not set in environment")
 
+    start = time.perf_counter()
+    print("[optimizer] Sending request to OpenRouter...")
     response = httpx.post(
         f"{OPENROUTER_BASE_URL}/chat/completions",
         headers={
@@ -32,6 +35,8 @@ def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0.3) ->
         timeout=120,
     )
     response.raise_for_status()
+    elapsed = time.perf_counter() - start
+    print(f"[optimizer] OpenRouter responded in {elapsed:.2f}s")
     return response.json()["choices"][0]["message"]["content"]
 
 
@@ -52,7 +57,8 @@ def shorten_text(
 ) -> str:
     latest = attempted_text
 
-    for _ in range(max_attempts):
+    for attempt in range(1, max_attempts + 1):
+        print(f"[optimizer] Shorten attempt {attempt}/{max_attempts} (limit {max_chars}).")
         user_prompt = build_shorten_user_prompt(
             original_text=original_text,
             latest_text=latest,
@@ -77,6 +83,7 @@ def shorten_text(
         latest = result
 
     # If it still exceeds, fall back to original text
+    print("[optimizer] Shorten attempts failed; reverting to original text.")
     return original_text
 
 
@@ -94,6 +101,10 @@ def enforce_limits(
             continue
 
         if len(new_text) > limit:
+            print(
+                f"[optimizer] Paragraph {idx} exceeds limit "
+                f"({len(new_text)} > {limit}). Triggering shorten."
+            )
             original_text = structure.paragraphs[idx].text
             corrected = shorten_text(
                 original_text=original_text,
