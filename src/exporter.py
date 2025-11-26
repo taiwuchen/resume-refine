@@ -4,7 +4,20 @@ import tempfile
 from pathlib import Path
 
 from docx import Document
+from docx.text.paragraph import Paragraph as DocxParagraph
 from docx2pdf import convert
+
+
+def _replace_paragraph_text(paragraph: DocxParagraph, new_text: str) -> None:
+    """Replace text while preserving paragraph formatting."""
+    runs = paragraph.runs
+    if not runs:
+        paragraph.add_run(new_text)
+        return
+
+    runs[0].text = new_text
+    for run in runs[1:]:
+        run.text = ""
 
 
 def apply_changes(doc: Document, optimized: dict[int, str]) -> Document:
@@ -13,7 +26,7 @@ def apply_changes(doc: Document, optimized: dict[int, str]) -> Document:
             raise IndexError(f"Paragraph index {idx} out of range")
 
         paragraph = doc.paragraphs[idx]
-        paragraph.text = new_text
+        _replace_paragraph_text(paragraph, new_text)
 
     return doc
 
