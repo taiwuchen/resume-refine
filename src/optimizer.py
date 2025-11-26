@@ -1,42 +1,33 @@
 import json
+from typing import Dict, List
+
 import httpx
+
 from src.config import OPENROUTER_API_KEY, OPENROUTER_MODEL, OPENROUTER_BASE_URL
 from src.parser import ResumeStructure
+from src.prompts import (
+    OPTIMIZE_SYSTEM_PROMPT,
+    SHORTEN_SYSTEM_PROMPT,
+    build_optimize_user_prompt,
+    build_shorten_user_prompt,
+)
 
 
-SYSTEM_PROMPT = """You are an expert ATS (Applicant Tracking System) resume optimizer.
-
-RULES:
-1. ONLY modify bullet points (work experience/project descriptions) and Skills section
-2. DO NOT change: names, contact info, section headers, company names, job titles, dates, locations, education
-3. Each paragraph has a CHARACTER LIMIT shown as "max:Xchars" - your output MUST be ≤ that limit
-4. Include relevant keywords from the job description naturally
-5. Keep the same meaning - don't fabricate experiences
-6. Use strong action verbs and quantify achievements
-
-OUTPUT FORMAT:
-Return a JSON object where keys are paragraph indices and values are the optimized text.
-Only include paragraphs you modified. Example:
-{"12": "Optimized bullet here", "17": "Another bullet"}
-
-Return ONLY the JSON object, no explanation."""
-
-
-def call_openrouter(prompt: str) -> str:
+def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0.3) -> str:
     """Make API call to OpenRouter."""
     if not OPENROUTER_API_KEY:
         raise ValueError("OPENROUTER_API_KEY not set in environment")
-    
+
     response = httpx.post(
         f"{OPENROUTER_BASE_URL}/chat/completions",
-        headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+        headers={
+            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+        },
         json={
             "model": OPENROUTER_MODEL,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            "temperature": 0.3,
+            "messages": messages,
+            "temperature": temperature,
         },
         timeout=120,
     )
@@ -52,20 +43,76 @@ def parse_response(response: str) -> dict[int, str]:
     return {int(k): v for k, v in json.loads(text).items()}
 
 
+def shorten_text(
+    original_text: str,
+    attempted_text: str,
+    job_description: str,
+    max_chars: int,
+    max_attempts: int = 3,
+) -> str:
+    latest = attempted_text
+
+    for _ in range(max_attempts):
+        user_prompt = build_shorten_user_prompt(
+            original_text=original_text,
+            latest_text=latest,
+            job_description=job_description,
+            max_chars=max_chars,
+        )
+
+        result = call_openrouter(
+            [
+                {"role": "system", "content": SHORTEN_SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            temperature=0.0,
+        ).strip()
+
+        if result.startswith("```"):
+            result = "\n".join(result.split("\n")[1:-1]).strip()
+
+        if len(result) <= max_chars:
+            return result
+
+        latest = result
+
+    # If it still exceeds, fall back to original text
+    return original_text
+
+
+def enforce_limits(
+    changes: dict[int, str],
+    structure: ResumeStructure,
+    job_description: str,
+) -> dict[int, str]:
+    """Ensure updated paragraphs respect original character counts."""
+    limits = structure.get_char_limits()
+
+    for idx, new_text in list(changes.items()):
+        limit = limits.get(idx)
+        if limit is None:
+            continue
+
+        if len(new_text) > limit:
+            original_text = structure.paragraphs[idx].text
+            corrected = shorten_text(
+                original_text=original_text,
+                attempted_text=new_text,
+                job_description=job_description,
+                max_chars=limit,
+            )
+            changes[idx] = corrected
+
+    return changes
+
+
 def optimize_resume(structure: ResumeStructure, job_description: str) -> dict[int, str]:
-    """Optimize resume content for job description."""
-    prompt = f"""## RESUME (with paragraph indices and character limits)
-
-{structure.to_prompt_format()}
-
-## JOB DESCRIPTION
-
-{job_description}
-
-## TASK
-
-Optimize bullet points to match the job description. Respect character limits strictly.
-Return ONLY a JSON object with modified paragraphs."""
-
-    response = call_openrouter(prompt)
-    return parse_response(response)
+    prompt = build_optimize_user_prompt(structure.to_prompt_format(), job_description)
+    response = call_openrouter(
+        [
+            {"role": "system", "content": OPTIMIZE_SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+    )
+    changes = parse_response(response)
+    return enforce_limits(changes, structure, job_description)
