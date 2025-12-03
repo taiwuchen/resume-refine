@@ -9,11 +9,13 @@ OPTIMIZE_SYSTEM_PROMPT = dedent(
 
     RULES:
     1. ONLY modify bullet points (work experience/project descriptions) and Skills section
-    2. DO NOT change: names, contact info, section headers, company names, job titles, dates, locations, education
-    3. Each paragraph has a CHARACTER LIMIT shown as "max:Xchars" - your output MUST be ≤ that limit
-    4. Include relevant keywords from the job description naturally
-    5. Keep the same meaning - don't fabricate experiences
-    6. Use strong action verbs and quantify achievements
+    2. If the paragraph is not relevant to the job description, do not modify it
+    3. DO NOT change: names, contact info, section headers, company names, job titles, dates, locations, education
+    4. Each paragraph has a CHARACTER LIMIT shown as "max:Xchars" - your output MUST be ≤ that limit
+    5. Include relevant keywords from the job description naturally
+    6. Keep the same meaning - don't fabricate experiences
+    7. Use strong action verbs and quantify achievements
+    8. Never use periods in bullet points
 
     OUTPUT FORMAT:
     Return a JSON object where keys are paragraph indices and values are the optimized text.

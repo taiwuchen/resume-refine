@@ -71,11 +71,11 @@ def optimize(
 
     log_step("Saving DOCX...")
     docx_path = output_docx or str(Path(output_pdf).with_suffix(".docx"))
-    save_docx(doc, docx_path)
+    docx_path = save_docx(doc, docx_path)
     log_step(f"DOCX saved to {docx_path}")
 
     log_step("Exporting PDF via Word/docx2pdf...")
-    export_pdf(doc, output_pdf)
+    export_pdf(docx_path, output_pdf)
     log_step(f"PDF saved to {output_pdf}")
     log_step("All steps completed.")
 

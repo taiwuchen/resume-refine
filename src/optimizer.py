@@ -32,7 +32,7 @@ def call_openrouter(messages: List[Dict[str, str]], temperature: float = 0.3) ->
             "messages": messages,
             "temperature": temperature,
         },
-        timeout=120,
+        timeout=180,
     )
     response.raise_for_status()
     elapsed = time.perf_counter() - start

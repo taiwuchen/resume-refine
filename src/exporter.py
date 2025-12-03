@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-import tempfile
+import shutil
 from pathlib import Path
 
 from docx import Document
 from docx.text.paragraph import Paragraph as DocxParagraph
 from docx2pdf import convert
+
+WORD_BRIDGE_DIR = Path.home() / ".resume-refine" / "word-bridge"
+WORD_BRIDGE_DOCX = WORD_BRIDGE_DIR / "bridge.docx"
+WORD_BRIDGE_PDF = WORD_BRIDGE_DIR / "bridge.pdf"
 
 
 def _replace_paragraph_text(paragraph: DocxParagraph, new_text: str) -> None:
@@ -38,18 +42,33 @@ def save_docx(doc: Document, output_path: str) -> str:
     return str(path)
 
 
-def export_pdf(doc: Document, output_path: str) -> str:
-    output = Path(output_path).expanduser()
+def export_pdf(docx_path: str | Path, output_path: str) -> str:
+    """
+    Convert the provided DOCX file to PDF via Microsoft Word.
+
+    Word (especially on macOS) frequently prompts for file-access permissions
+    whenever it sees a new path. We always convert through a stable "bridge"
+    file so the user only has to grant permission once.
+    """
+    source = Path(docx_path).expanduser().resolve()
+    if not source.exists():
+        raise FileNotFoundError(f"DOCX not found for PDF export: {source}")
+
+    output = Path(output_path).expanduser().resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    # docx2pdf requires a DOCX file on disk
-    with tempfile.NamedTemporaryFile(suffix=".docx", delete=False) as temp:
-        temp_path = Path(temp.name)
-    try:
-        doc.save(temp_path)
-        convert(str(temp_path), str(output))
-    finally:
-        temp_path.unlink(missing_ok=True)
+    WORD_BRIDGE_DIR.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, WORD_BRIDGE_DOCX)
 
+    try:
+        convert(str(WORD_BRIDGE_DOCX), str(WORD_BRIDGE_PDF))
+    except SystemExit as exc:  # docx2pdf uses sys.exit on failure
+        raise RuntimeError(
+            "docx2pdf failed while asking Microsoft Word to export the PDF. "
+            "If macOS shows a 'Grant File Access' dialog for the bridge file "
+            f"({WORD_BRIDGE_DOCX}), approve it once and rerun."
+        ) from exc
+
+    shutil.copy2(WORD_BRIDGE_PDF, output)
     return str(output)
 
