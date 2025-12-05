@@ -42,23 +42,25 @@ python main.py path/to/resume.docx
 Flow:
 
 1. Reads `job_description.txt` (or a file provided via `--job-description-file`).
-2. Parses every paragraph of the resume and builds a structured prompt with per-paragraph character limits.
-3. Calls OpenAI to rewrite bullet points and skills.
-4. Applies the changes in-place while preserving fonts, spacing, and layout.
-5. Saves both DOCX and PDF:
-   - DOCX default: `output/resume.docx`
-   - PDF default: `output/resume.pdf`
+2. Extracts company + role from the job description (stored under `output/{company}__{role}`).
+3. Parses every paragraph of the resume and builds a structured prompt with per-paragraph character limits.
+4. Calls OpenAI to rewrite bullet points and skills.
+5. Applies the changes in-place while preserving fonts, spacing, and layout.
+6. Saves both DOCX and PDF into the per-role folder:
+   - DOCX default name: `resume.docx`
+   - PDF default name: `resume.pdf`
 
 ### Options
 
 ```
 python main.py RESUME.docx \
   --job-description-file job_description.txt \
-  --output-docx output/custom.docx \
-  --output-pdf output/custom.pdf
+  --output-docx custom.docx \
+  --output-pdf custom.pdf
 ```
 
 If `--output-docx` is omitted it defaults to the PDF path with a `.docx` suffix.
+Provided output filenames are placed inside the per-role folder determined from the job description.
 
 ## Logging & Debugging
 

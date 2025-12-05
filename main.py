@@ -6,6 +6,7 @@ import time
 import typer
 
 from src.exporter import apply_changes, export_pdf, save_docx
+from src.job_metadata import extract_job_metadata, sanitize_for_path
 from src.optimizer import optimize_resume
 from src.parser import extract_structure, parse_docx
 
@@ -57,6 +58,10 @@ def optimize(
 
     jd_text = load_job_description(job_description_file)
     log_step("Loaded job description.")
+
+    company, role = extract_job_metadata(jd_text)
+    log_step(f"Detected company '{company}' and role '{role}'.")
+    output_dir = Path("output") / f"{sanitize_for_path(company)}__{sanitize_for_path(role)}"
     log_step("Parsing resume...")
     doc = parse_docx(str(resume_path))
     structure = extract_structure(doc)
@@ -70,13 +75,15 @@ def optimize(
     apply_changes(doc, changes)
 
     log_step("Saving DOCX...")
-    docx_path = output_docx or str(Path(output_pdf).with_suffix(".docx"))
-    docx_path = save_docx(doc, docx_path)
+    pdf_name = Path(output_pdf).name
+    docx_name = Path(output_docx).name if output_docx else Path(pdf_name).with_suffix(".docx").name
+    docx_path = save_docx(doc, str(output_dir / docx_name))
     log_step(f"DOCX saved to {docx_path}")
 
     log_step("Exporting PDF via Word/docx2pdf...")
-    export_pdf(docx_path, output_pdf)
-    log_step(f"PDF saved to {output_pdf}")
+    pdf_path = str(output_dir / pdf_name)
+    export_pdf(docx_path, pdf_path)
+    log_step(f"PDF saved to {pdf_path}")
     log_step("All steps completed.")
 
 
