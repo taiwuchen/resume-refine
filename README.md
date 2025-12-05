@@ -6,7 +6,7 @@ A command-line tool that rewrites DOCX resumes to match a job description while 
 
 - Python 3.11+
 - Microsoft Word (used by `docx2pdf` to render PDFs) or LibreOffice if you customize the exporter
-- An OpenRouter API key with access to your preferred model
+- An OpenAI API key with access to your preferred model
 
 ## Setup
 
@@ -21,8 +21,8 @@ pip install -r requirements.txt
 Create a `.env` file (see `.env.example`) with:
 
 ```
-OPENROUTER_API_KEY=sk-...
-OPENROUTER_MODEL=grok-4.1-fast
+OPENAI_API_KEY=sk-...
+OPENAI_MODEL=gpt-5.1-mini
 ```
 
 Prepare a job description file (default path: `job_description.txt`), e.g.:
@@ -43,7 +43,7 @@ Flow:
 
 1. Reads `job_description.txt` (or a file provided via `--job-description-file`).
 2. Parses every paragraph of the resume and builds a structured prompt with per-paragraph character limits.
-3. Calls OpenRouter to rewrite bullet points and skills.
+3. Calls OpenAI to rewrite bullet points and skills.
 4. Applies the changes in-place while preserving fonts, spacing, and layout.
 5. Saves both DOCX and PDF:
    - DOCX default: `output/resume.docx`
@@ -63,7 +63,7 @@ If `--output-docx` is omitted it defaults to the PDF path with a `.docx` suffix.
 ## Logging & Debugging
 
 `main.py` prints timestamps for each major step (load JD, parse resume, call LLM, save DOCX, export PDF).  
-`src/optimizer.py` logs when requests are sent to OpenRouter, how long they take, and when paragraphs need extra shortening passes. Use these logs to pinpoint slow stages.
+`src/optimizer.py` logs when requests are sent to OpenAI, how long they take, and when paragraphs need extra shortening passes. Use these logs to pinpoint slow stages.
 
 ## PDF Export Notes
 
@@ -72,6 +72,6 @@ If you prefer a headless converter, replace `export_pdf` with a LibreOffice (`so
 
 ## Tips
 
-- Expect multiple OpenRouter calls per run: one main rewrite plus follow-up “shorten” calls if any paragraph exceeds its character limit.
+- Expect multiple OpenAI calls per run: one main rewrite plus follow-up “shorten” calls if any paragraph exceeds its character limit.
 - Word-to-PDF conversion typically takes 10–25 seconds regardless of model speed; use the log timestamps to see how much time comes from API calls vs. Word rendering.
 
