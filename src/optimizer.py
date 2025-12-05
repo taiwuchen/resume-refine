@@ -14,7 +14,7 @@ from src.prompts import (
 )
 
 
-def call_openai(messages: List[Dict[str, str]], temperature: float = 0.3) -> str:
+def call_openai(messages: List[Dict[str, str]]) -> str:
     """Make API call to OpenAI."""
     if not OPENAI_API_KEY:
         raise ValueError("OPENAI_API_KEY not set in environment")
@@ -25,7 +25,6 @@ def call_openai(messages: List[Dict[str, str]], temperature: float = 0.3) -> str
     response = client.chat.completions.create(
         model=OPENAI_MODEL,
         messages=messages,
-        temperature=temperature,
         timeout=180,
     )
     elapsed = time.perf_counter() - start
@@ -63,8 +62,7 @@ def shorten_text(
             [
                 {"role": "system", "content": SHORTEN_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.0,
+            ]
         ).strip()
 
         if result.startswith("```"):
@@ -119,4 +117,5 @@ def optimize_resume(structure: ResumeStructure, job_description: str) -> dict[in
         ]
     )
     changes = parse_response(response)
+    print("[optimizer] First-pass rewrite complete; applying length checks.")
     return enforce_limits(changes, structure, job_description)
