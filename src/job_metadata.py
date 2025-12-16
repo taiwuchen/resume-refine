@@ -4,7 +4,7 @@ from typing import Tuple
 
 from openai import OpenAI  # pyright: ignore[reportMissingImports]
 
-from src.config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
+from src.config import OPENROUTER_API_KEY, OPENROUTER_MODEL, OPENROUTER_BASE_URL
 
 SYSTEM_PROMPT = (
     "Extract the hiring company name and the role title from the job description. "
@@ -29,12 +29,12 @@ def sanitize_for_path(label: str) -> str:
 
 
 def extract_job_metadata(job_description: str) -> Tuple[str, str]:
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY not set in environment")
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY not set in environment")
 
-    client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+    client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
     response = client.chat.completions.create(
-        model=OPENAI_MODEL,
+        model=OPENROUTER_MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": job_description},

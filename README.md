@@ -6,7 +6,7 @@ A command-line tool that rewrites DOCX resumes to match a job description while 
 
 - Python 3.11+
 - Microsoft Word (used by `docx2pdf` to render PDFs) or LibreOffice if you customize the exporter
-- An OpenAI API key with access to your preferred model
+- An OpenRouter API key with access to your preferred model
 
 ## Setup
 
@@ -21,8 +21,8 @@ pip install -r requirements.txt
 Create a `.env` file (see `.env.example`) with:
 
 ```
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-5.1-mini
+OPENROUTER_API_KEY=...
+OPENROUTER_MODEL=openai/gpt-5-nano
 ```
 
 Prepare a job description file (default path: `job_description.txt`), e.g.:
@@ -36,7 +36,7 @@ Senior ML Engineer
 ## Usage
 
 ```bash
-python main.py path/to/resume.docx
+python main.py optimize path/to/resume.docx
 ```
 
 Flow:
@@ -44,7 +44,7 @@ Flow:
 1. Reads `job_description.txt` (or a file provided via `--job-description-file`).
 2. Extracts company + role from the job description (stored under `output/{company}__{role}`).
 3. Parses every paragraph of the resume and builds a structured prompt with per-paragraph character limits.
-4. Calls OpenAI to rewrite bullet points and skills.
+4. Calls OpenRouter to rewrite bullet points and skills.
 5. Applies the changes in-place while preserving fonts, spacing, and layout.
 6. Saves both DOCX and PDF into the per-role folder:
    - DOCX default name: `resume.docx`
@@ -53,7 +53,7 @@ Flow:
 ### Options
 
 ```
-python main.py RESUME.docx \
+python main.py optimize RESUME.docx \
   --job-description-file job_description.txt \
   --output-docx custom.docx \
   --output-pdf custom.pdf
@@ -65,7 +65,7 @@ Provided output filenames are placed inside the per-role folder determined from 
 ## Logging & Debugging
 
 `main.py` prints timestamps for each major step (load JD, parse resume, call LLM, save DOCX, export PDF).  
-`src/optimizer.py` logs when requests are sent to OpenAI, how long they take, and when paragraphs need extra shortening passes. Use these logs to pinpoint slow stages.
+`src/optimizer.py` logs when requests are sent to OpenRouter, how long they take, and when paragraphs need extra shortening passes. Use these logs to pinpoint slow stages.
 
 ## PDF Export Notes
 
@@ -74,6 +74,6 @@ If you prefer a headless converter, replace `export_pdf` with a LibreOffice (`so
 
 ## Tips
 
-- Expect multiple OpenAI calls per run: one main rewrite plus follow-up “shorten” calls if any paragraph exceeds its character limit.
+- Expect multiple OpenRouter calls per run: one main rewrite plus follow-up “shorten” calls if any paragraph exceeds its character limit.
 - Word-to-PDF conversion typically takes 10–25 seconds regardless of model speed; use the log timestamps to see how much time comes from API calls vs. Word rendering.
 

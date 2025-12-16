@@ -4,7 +4,7 @@ import time
 
 from openai import OpenAI  # pyright: ignore[reportMissingImports]
 
-from src.config import OPENAI_API_KEY, OPENAI_MODEL, OPENAI_BASE_URL
+from src.config import OPENROUTER_API_KEY, OPENROUTER_MODEL, OPENROUTER_BASE_URL
 from src.parser import ResumeStructure
 from src.prompts import (
     OPTIMIZE_SYSTEM_PROMPT,
@@ -14,21 +14,20 @@ from src.prompts import (
 )
 
 
-def call_openai(messages: List[Dict[str, str]]) -> str:
-    """Make API call to OpenAI."""
-    if not OPENAI_API_KEY:
-        raise ValueError("OPENAI_API_KEY not set in environment")
+def call_llm(messages: List[Dict[str, str]]) -> str:
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY not set in environment")
 
     start = time.perf_counter()
-    print("[optimizer] Sending request to OpenAI...")
-    client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL)
+    print("[optimizer] Sending request to OpenRouter...")
+    client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
     response = client.chat.completions.create(
-        model=OPENAI_MODEL,
+        model=OPENROUTER_MODEL,
         messages=messages,
         timeout=180,
     )
     elapsed = time.perf_counter() - start
-    print(f"[optimizer] OpenAI responded in {elapsed:.2f}s")
+    print(f"[optimizer] OpenRouter responded in {elapsed:.2f}s")
     return response.choices[0].message.content
 
 
@@ -58,7 +57,7 @@ def shorten_text(
             max_chars=max_chars,
         )
 
-        result = call_openai(
+        result = call_llm(
             [
                 {"role": "system", "content": SHORTEN_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},
@@ -110,7 +109,7 @@ def enforce_limits(
 
 def optimize_resume(structure: ResumeStructure, job_description: str) -> dict[int, str]:
     prompt = build_optimize_user_prompt(structure.to_prompt_format(), job_description)
-    response = call_openai(
+    response = call_llm(
         [
             {"role": "system", "content": OPTIMIZE_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
