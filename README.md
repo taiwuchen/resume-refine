@@ -1,79 +1,47 @@
-# Resume Refine CLI
+# Resume Refine
 
-A command-line tool that rewrites DOCX resumes to match a job description while preserving the original layout and exporting a pixel-identical PDF.
+A tool to rewrite DOCX resumes to match multiple job descriptions while preserving the original layout and exporting Word-identical PDFs.
 
 ## Requirements
-
 - Python 3.11+
-- Microsoft Word (used by `docx2pdf` to render PDFs) or LibreOffice if you customize the exporter
-- An OpenRouter API key with access to your preferred model
+- **Microsoft Word** (required for Word-identical PDF export via `docx2pdf`)
+- OpenRouter API Key
 
 ## Setup
-
-```bash
-git clone <repo-url>
-cd resume-refine
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Create a `.env` file (see `.env.example`) with:
-
-```
-OPENROUTER_API_KEY=...
-OPENROUTER_MODEL=openai/gpt-5-nano
-```
-
-Prepare a job description file (default path: `job_description.txt`), e.g.:
-
-```
-Senior ML Engineer
-- Own distributed model training and deployment
-- Experience with Python, GCP, Kubernetes
-```
+1. Clone the repo and install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Create a `.env` file:
+   ```text
+   OPENROUTER_API_KEY=your_key_here
+   OPENROUTER_MODEL=openai/gpt-5-nano
+   ```
 
 ## Usage
 
+### 🚀 Web UI
+The easiest way to process multiple jobs in parallel:
 ```bash
-python main.py optimize path/to/resume.docx
+streamlit run app.py
 ```
+- Upload your resume.
+- Add multiple job descriptions.
+- Click "Start Parallel Refine".
+- Preview and download your PDFs directly in the browser.
 
-Flow:
-
-1. Reads `job_description.txt` (or a file provided via `--job-description-file`).
-2. Extracts company + role from the job description (stored under `output/{company}__{role}`).
-3. Parses every paragraph of the resume and builds a structured prompt with per-paragraph character limits.
-4. Calls OpenRouter to rewrite bullet points and skills.
-5. Applies the changes in-place while preserving fonts, spacing, and layout.
-6. Saves both DOCX and PDF into the per-role folder:
-   - DOCX default name: `resume.docx`
-   - PDF default name: `resume.pdf`
-
-### Options
-
+### 🔌 API
+Run the backend for programmatic access:
+```bash
+uvicorn src.api:app --port 8000
 ```
-python main.py optimize RESUME.docx \
-  --job-description-file job_description.txt \
-  --output-docx custom.docx \
-  --output-pdf custom.pdf
-```
+- `POST /process`: Submit resume + multiple JDs.
+- `GET /download/{job_id}/{file_type}`: Fetch results.
 
-If `--output-docx` is omitted it defaults to the PDF path with a `.docx` suffix.
-Provided output filenames are placed inside the per-role folder determined from the job description.
+## Parallel Processing
+The system optimizes multiple jobs at once using a thread pool. However, because Microsoft Word can only reliably process one document at a time, the PDF conversion step is automatically queued (serialized) to ensure high-quality, non-corrupted outputs.
 
-## Logging & Debugging
-
-`main.py` prints timestamps for each major step (load JD, parse resume, call LLM, save DOCX, export PDF).  
-`src/optimizer.py` logs when requests are sent to OpenRouter, how long they take, and when paragraphs need extra shortening passes. Use these logs to pinpoint slow stages.
-
-## PDF Export Notes
-
-`docx2pdf` automates Microsoft Word via AppleScript/COM. macOS may prompt the first time asking whether Terminal/Cursor is allowed to control Word. Approve this under **System Settings → Privacy & Security → Automation** to avoid repeated prompts.  
-If you prefer a headless converter, replace `export_pdf` with a LibreOffice (`soffice --headless --convert-to pdf`) call.
-
-## Tips
-
-- Expect multiple OpenRouter calls per run: one main rewrite plus follow-up “shorten” calls if any paragraph exceeds its character limit.
-- Word-to-PDF conversion typically takes 10–25 seconds regardless of model speed; use the log timestamps to see how much time comes from API calls vs. Word rendering.
-
+## Output
+Files are saved in:
+`output/{company}__{role}/resume.docx`
+`output/{company}__{role}/resume.pdf`
