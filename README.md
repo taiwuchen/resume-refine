@@ -30,14 +30,6 @@ streamlit run app.py
 - Click "Start Parallel Refine".
 - Preview and download your PDFs directly in the browser.
 
-### 🔌 API
-Run the backend for programmatic access:
-```bash
-uvicorn src.api:app --port 8000
-```
-- `POST /process`: Submit resume + multiple JDs.
-- `GET /download/{job_id}/{file_type}`: Fetch results.
-
 ## Parallel Processing
 The system optimizes multiple jobs at once using a thread pool. However, because Microsoft Word can only reliably process one document at a time, the PDF conversion step is automatically queued (serialized) to ensure high-quality, non-corrupted outputs.
 
