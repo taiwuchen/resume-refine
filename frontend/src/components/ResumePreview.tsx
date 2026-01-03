@@ -6,6 +6,7 @@ import './ResumePreview.css';
 interface ResumePreviewProps {
     text: string;
     suggestions: Suggestion[];
+    isLoading?: boolean;
     onTextSelect: (start: number, end: number, text: string) => void;
     onAcceptSuggestion: (suggestion: Suggestion, replacement: string) => void;
     onDismissSuggestion: (suggestionId: string) => void;
@@ -15,6 +16,7 @@ interface ResumePreviewProps {
 export function ResumePreview({
     text,
     suggestions,
+    isLoading = false,
     onTextSelect,
     onAcceptSuggestion,
     onDismissSuggestion,
@@ -89,6 +91,12 @@ export function ResumePreview({
 
     return (
         <div className="resume-preview">
+            {isLoading && (
+                <div className="loading-overlay">
+                    <div className="loading-spinner" />
+                    <span className="loading-text">Analyzing resume...</span>
+                </div>
+            )}
             <div className="resume-content" ref={containerRef} onMouseUp={handleMouseUp}>
                 {text ? (
                     <pre className="resume-text">{renderTextWithHighlights()}</pre>

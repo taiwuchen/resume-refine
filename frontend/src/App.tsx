@@ -194,6 +194,7 @@ function App() {
         <ResumePreview
           text={displayText}
           suggestions={suggestions}
+          isLoading={isAnalyzing}
           onTextSelect={handleTextSelect}
           onAcceptSuggestion={handleAcceptSuggestion}
           onDismissSuggestion={handleDismissSuggestion}

@@ -1,6 +1,7 @@
 .resume-preview {
     flex: 1;
     min-width: 0;
+    position: relative;
     background: #1a1a2e;
     border-radius: 12px;
     overflow: hidden;
@@ -44,4 +45,36 @@
     height: 100%;
     color: rgba(255, 255, 255, 0.4);
     font-size: 1.1rem;
+}
+
+.loading-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 15, 26, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 10;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
 }
