@@ -1,0 +1,14 @@
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0f0f1a;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  gap: 1.5rem;
+  padding: 1.5rem;
+  overflow: hidden;
+}

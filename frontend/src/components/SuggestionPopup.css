@@ -1,0 +1,124 @@
+.suggestion-popup {
+    position: fixed;
+    width: 400px;
+    max-width: 90vw;
+    background: #1e1e2e;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(102, 126, 234, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.popup-title {
+    font-weight: 600;
+    color: #667eea;
+}
+
+.popup-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.popup-btn {
+    background: none;
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.popup-btn.refresh {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.popup-btn.refresh:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.popup-btn.dismiss {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.popup-btn.dismiss:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.popup-original {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.popup-original .label {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.popup-original p {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.5;
+}
+
+.popup-alternatives {
+    padding: 0.5rem;
+}
+
+.alternative-option {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.alternative-option:hover {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.option-number {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.option-text {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+}

@@ -1,0 +1,47 @@
+.resume-preview {
+    flex: 1;
+    min-width: 0;
+    background: #1a1a2e;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.resume-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.resume-text {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    margin: 0;
+}
+
+.suggestion-highlight {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.3) 0%, rgba(118, 75, 162, 0.3) 100%);
+    border-bottom: 2px solid #667eea;
+    cursor: pointer;
+    padding: 0 2px;
+    border-radius: 2px;
+    transition: all 0.2s ease;
+}
+
+.suggestion-highlight:hover {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.5) 0%, rgba(118, 75, 162, 0.5) 100%);
+}
+
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 1.1rem;
+}
