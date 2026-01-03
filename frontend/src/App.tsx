@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Header } from './components/Header';
+import { DocumentPreview } from './components/DocumentPreview';
 import { ResumePreview } from './components/ResumePreview';
 import { ChatSidebar } from './components/ChatSidebar';
 import type { ParsedDocument, Suggestion, Change, ChatMessage } from './types';
@@ -191,6 +192,8 @@ function App() {
       />
 
       <main className="main-content">
+        <DocumentPreview docId={document?.doc_id ?? null} />
+
         <ResumePreview
           text={displayText}
           suggestions={suggestions}

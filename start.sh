@@ -7,10 +7,10 @@ cd "$(dirname "$0")"
 
 echo "Starting Resume Refine..."
 
-# Start backend
-echo "📦 Starting backend on http://localhost:8000..."
+# Start backend with venv
+echo "Starting backend on http://localhost:8000..."
 cd backend
-uvicorn main:app --reload --port 8000 &
+../.venv/bin/uvicorn main:app --reload --port 8000 &
 BACKEND_PID=$!
 cd ..
 
