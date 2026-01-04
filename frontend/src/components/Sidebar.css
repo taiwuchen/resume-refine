@@ -1,0 +1,277 @@
+.sidebar {
+    width: 380px;
+    min-width: 320px;
+    background: #1a1a2e;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.selected-section {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.selected-text {
+    margin: 0;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.5;
+    max-height: 100px;
+    overflow-y: auto;
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.prompt-form {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.prompt-input {
+    flex: 1;
+    padding: 0.6rem 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.85rem;
+}
+
+.prompt-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.prompt-input:focus {
+    outline: none;
+    border-color: rgba(102, 126, 234, 0.5);
+}
+
+.prompt-submit {
+    padding: 0.6rem 0.9rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.prompt-submit:hover:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.prompt-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.suggestions-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 2rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(102, 126, 234, 0.3);
+    border-top-color: #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.empty-state {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.9rem;
+}
+
+.suggestions-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.suggestion-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.suggestion-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.suggestion-card.expanded {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+
+.suggestion-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    cursor: pointer;
+}
+
+.original-text {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.4;
+    flex: 1;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.suggestion-card.expanded .original-text {
+    -webkit-line-clamp: unset;
+}
+
+.expand-icon {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.75rem;
+}
+
+.suggestion-options {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.75rem;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+.options-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.option-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.action-btn.refresh {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.action-btn.refresh:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.action-btn.dismiss {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.action-btn.dismiss:hover {
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
+}
+
+.alternative-btn {
+    width: 100%;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    margin-top: 0.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.alternative-btn:hover {
+    background: rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.3);
+}
+
+.alt-number {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.alt-text {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+}

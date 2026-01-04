@@ -1,6 +1,6 @@
 .document-preview {
-    width: 400px;
-    min-width: 300px;
+    flex: 1;
+    min-width: 0;
     background: #fff;
     border-radius: 12px;
     overflow: hidden;
@@ -10,8 +10,11 @@
 
 .preview-header {
     padding: 0.75rem 1rem;
-    background: #f5f5f5;
+    background: #f5f5f7;
     border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .preview-title {
@@ -20,21 +23,28 @@
     color: #333;
 }
 
+.preview-hint {
+    font-size: 0.75rem;
+    color: #888;
+}
+
 .preview-container {
     flex: 1;
     overflow: auto;
-    background: #fff;
+    background: #f5f5f7;
     padding: 0;
+    cursor: text;
 }
 
 .preview-container .docx-wrapper {
-    background: #fff !important;
+    background: #f5f5f7 !important;
     padding: 20px !important;
 }
 
 .preview-container .docx-wrapper>section.docx {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
     margin-bottom: 20px !important;
+    background: #fff !important;
 }
 
 .preview-empty {
@@ -42,13 +52,17 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    min-height: 300px;
+    min-height: 400px;
     color: #999;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
 }
 
 .preview-error {
     color: #ef4444;
     text-align: center;
     padding: 2rem;
+}
+
+::selection {
+    background: rgba(102, 126, 234, 0.3);
 }
