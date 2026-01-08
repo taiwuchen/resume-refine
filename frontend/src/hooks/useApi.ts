@@ -1,4 +1,4 @@
-import type { ParsedDocument, Suggestion, Change } from '../types';
+import type { ParsedDocument, Suggestion, Change, ChatEdit } from '../types';
 
 const API_BASE = 'http://localhost:8000/api';
 
@@ -84,4 +84,37 @@ export async function exportResume(
     }
 
     return response.blob();
+}
+
+export interface ChatApiMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+export interface ChatApiResponse {
+    message: string;
+    edits: ChatEdit[];
+}
+
+export async function sendChatMessage(
+    docId: string,
+    jobDescription: string,
+    messages: ChatApiMessage[]
+): Promise<ChatApiResponse> {
+    const response = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            doc_id: docId,
+            job_description: jobDescription,
+            messages,
+        }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Chat failed');
+    }
+
+    return response.json();
 }

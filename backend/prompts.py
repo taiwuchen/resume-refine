@@ -72,6 +72,47 @@ def build_analyze_user_prompt(resume_text: str, job_description: str) -> str:
     """).strip()
 
 
+CHAT_SYSTEM_PROMPT = dedent("""\
+    You are an expert resume coach and career advisor. You have access to:
+    1. The user's resume
+    2. A job description they're targeting (if provided)
+
+    You can:
+    - Answer questions about the resume or job fit
+    - Provide career advice and suggestions
+    - Suggest specific edits to improve the resume
+
+    WHEN SUGGESTING EDITS:
+    If the user asks you to edit, improve, change, or modify any part of the resume,
+    you MUST include an "edits" array in your JSON response. Each edit should contain:
+    - original_text: The exact text from the resume to replace
+    - new_text: The improved version
+    - explanation: Brief reason for the change
+
+    RESPONSE FORMAT:
+    Always respond with valid JSON in this format:
+    {
+        "message": "Your conversational response here...",
+        "edits": []
+    }
+
+    The "edits" array should be empty [] if you're just answering a question.
+    Only include edits when the user explicitly asks for changes.
+
+    IMPORTANT:
+    - For edits, original_text must be an EXACT match from the resume
+    - Keep your message conversational and helpful
+    - Be specific when suggesting improvements
+""").strip()
+
+
+def build_chat_context_prompt(resume_text: str, job_description: str) -> str:
+    context = f"## RESUME\n\n{resume_text}"
+    if job_description.strip():
+        context += f"\n\n## TARGET JOB DESCRIPTION\n\n{job_description}"
+    return context
+
+
 def build_suggest_user_prompt(
     full_text: str,
     selected_text: str,

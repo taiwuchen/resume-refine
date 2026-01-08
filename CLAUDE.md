@@ -48,12 +48,14 @@ flowchart TD
 │   │   ├── analyze.py                # POST /api/analyze - Analyze resume vs job description
 │   │   ├── suggest.py                # POST /api/suggest - Generate text alternatives
 │   │   ├── export.py                 # POST /api/export - Apply changes, return DOCX
-│   │   └── document.py               # GET /api/document/{doc_id} - Serve original DOCX
+│   │   ├── document.py               # GET /api/document/{doc_id} - Serve original DOCX
+│   │   └── chat.py                   # POST /api/chat - Chat agent with resume context
 │   └── services/
 │       ├── parser.py                 # Parse DOCX to text with position mapping
 │       ├── analyzer.py               # Identify improvable sections via LLM
 │       ├── suggester.py              # Generate 3 alternatives for selected text
 │       ├── exporter.py               # Apply changes to DOCX preserving formatting
+│       ├── chat.py                   # Handle chat conversations with LLM
 │       └── llm.py                    # OpenRouter API wrapper
 ├── frontend/                         # React + TypeScript + Vite
 │   ├── src/

@@ -26,9 +26,15 @@ export interface Change {
     replacement: string;
 }
 
+export interface ChatEdit {
+    original_text: string;
+    new_text: string;
+    explanation: string;
+}
+
 export interface ChatMessage {
     id: string;
     role: 'user' | 'assistant';
     content: string;
-    suggestion?: Suggestion;
+    edits?: ChatEdit[];
 }

@@ -51,14 +51,28 @@ class SuggestResponse(BaseModel):
     suggestion: Suggestion
 
 
-class ApplyRequest(BaseModel):
-    doc_id: str
-    start: int
-    end: int
-    original: str
-    replacement: str
-
-
 class ExportRequest(BaseModel):
     doc_id: str
     changes: list[Change]
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ChatEdit(BaseModel):
+    original_text: str
+    new_text: str
+    explanation: str
+
+
+class ChatRequest(BaseModel):
+    doc_id: str
+    job_description: str
+    messages: list[ChatMessage]
+
+
+class ChatResponse(BaseModel):
+    message: str
+    edits: list[ChatEdit] = []

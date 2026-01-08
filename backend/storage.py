@@ -16,8 +16,3 @@ def get_document(doc_id: str) -> ParsedDocument | None:
 
 def get_file_path(doc_id: str) -> Path | None:
     return _file_paths.get(doc_id)
-
-
-def delete_document(doc_id: str) -> None:
-    _documents.pop(doc_id, None)
-    _file_paths.pop(doc_id, None)

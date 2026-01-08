@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { Header } from './components/Header';
 import { DocumentPreview } from './components/DocumentPreview';
 import { Sidebar } from './components/Sidebar';
-import type { ParsedDocument, Suggestion, Change } from './types';
-import { uploadResume, analyzeResume, getSuggestions, exportResume } from './hooks/useApi';
+import type { ParsedDocument, Suggestion, Change, ChatMessage, ChatEdit } from './types';
+import { uploadResume, analyzeResume, getSuggestions, exportResume, sendChatMessage } from './hooks/useApi';
 import './App.css';
 
 function App() {
@@ -11,8 +11,7 @@ function App() {
   const [jobDescription, setJobDescription] = useState('');
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [changes, setChanges] = useState<Change[]>([]);
-
-  const [selectedText, setSelectedText] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -24,7 +23,7 @@ function App() {
       setDocument(doc);
       setSuggestions([]);
       setChanges([]);
-      setSelectedText('');
+      setChatMessages([]);
     } catch (error) {
       console.error('Upload failed:', error);
       alert(error instanceof Error ? error.message : 'Upload failed');
@@ -66,10 +65,6 @@ function App() {
     }
   };
 
-  const handleTextSelect = (text: string) => {
-    setSelectedText(text);
-  };
-
   const handleAcceptSuggestion = (suggestion: Suggestion, replacement: string) => {
     const change: Change = {
       start: suggestion.start,
@@ -83,6 +78,10 @@ function App() {
 
   const handleDismissSuggestion = (suggestionId: string) => {
     setSuggestions(suggestions.filter((s) => s.id !== suggestionId));
+  };
+
+  const handleRevertChange = (index: number) => {
+    setChanges(changes.filter((_, i) => i !== index));
   };
 
   const handleRefreshSuggestion = async (suggestion: Suggestion) => {
@@ -104,27 +103,96 @@ function App() {
     }
   };
 
-  const handleSendPrompt = async (prompt: string) => {
-    if (!document || !selectedText || !jobDescription.trim()) return;
+  // Chat handlers
+  const handleSendMessage = async (message: string) => {
+    if (!document) return;
 
+    const userMessage: ChatMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message,
+    };
+
+    setChatMessages((prev) => [...prev, userMessage]);
     setIsChatLoading(true);
+
     try {
-      const suggestion = await getSuggestions(
+      // Convert chat messages to API format (exclude edits, just role + content)
+      const apiMessages = [...chatMessages, userMessage].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const response = await sendChatMessage(
         document.doc_id,
-        0,
-        selectedText.length,
-        selectedText,
         jobDescription,
-        prompt
+        apiMessages
       );
-      setSuggestions([suggestion, ...suggestions]);
-      setSelectedText('');
+
+      const assistantMessage: ChatMessage = {
+        id: `assistant-${Date.now()}`,
+        role: 'assistant',
+        content: response.message,
+        edits: response.edits,
+      };
+
+      setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Suggestion failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to get suggestions');
+      console.error('Chat failed:', error);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: 'Sorry, something went wrong. Please try again.',
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsChatLoading(false);
     }
+  };
+
+  const handleClearChat = () => {
+    setChatMessages([]);
+  };
+
+  const handleAcceptEdit = (edit: ChatEdit) => {
+    // Find position in full text (simple substring search)
+    const fullText = document?.full_text || '';
+    const start = fullText.indexOf(edit.original_text);
+    if (start === -1) {
+      alert('Could not find the original text in the document');
+      return;
+    }
+
+    const change: Change = {
+      start,
+      end: start + edit.original_text.length,
+      original: edit.original_text,
+      replacement: edit.new_text,
+    };
+
+    setChanges([...changes, change]);
+
+    // Remove the edit from the message
+    setChatMessages((prev) =>
+      prev.map((msg) => ({
+        ...msg,
+        edits: msg.edits?.filter(
+          (e) => e.original_text !== edit.original_text || e.new_text !== edit.new_text
+        ),
+      }))
+    );
+  };
+
+  const handleRejectEdit = (messageId: string, editIndex: number) => {
+    setChatMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.id !== messageId) return msg;
+        return {
+          ...msg,
+          edits: msg.edits?.filter((_, i) => i !== editIndex),
+        };
+      })
+    );
   };
 
   return (
@@ -144,18 +212,23 @@ function App() {
         <DocumentPreview
           docId={document?.doc_id ?? null}
           changes={changes}
-          onTextSelect={handleTextSelect}
+          suggestions={suggestions}
+          onRevertChange={handleRevertChange}
         />
 
         <Sidebar
-          selectedText={selectedText}
           suggestions={suggestions}
           onAcceptSuggestion={handleAcceptSuggestion}
           onDismissSuggestion={handleDismissSuggestion}
           onRefreshSuggestion={handleRefreshSuggestion}
-          onSendPrompt={handleSendPrompt}
           isAnalyzing={isAnalyzing}
+          chatMessages={chatMessages}
+          onSendMessage={handleSendMessage}
+          onClearChat={handleClearChat}
+          onAcceptEdit={handleAcceptEdit}
+          onRejectEdit={handleRejectEdit}
           isChatLoading={isChatLoading}
+          hasDocument={!!document}
         />
       </main>
     </div>

@@ -91,10 +91,22 @@
     text-underline-offset: 2px;
 }
 
+.suggestion-pending {
+    background: rgba(245, 158, 11, 0.15);
+    border-bottom: 2px solid #F59E0B;
+    padding: 0 2px;
+}
+
 .change-applied {
     background: rgba(230, 57, 70, 0.12);
     border-bottom: 2px solid var(--accent);
     padding: 0 2px;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.change-applied:hover {
+    background: rgba(230, 57, 70, 0.25);
 }
 
 .preview-empty {

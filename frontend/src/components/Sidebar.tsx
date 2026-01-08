@@ -1,138 +1,229 @@
-import { useState } from 'react';
-import type { Suggestion } from '../types';
+import { useState, useRef, useEffect } from 'react';
+import type { Suggestion, ChatMessage, ChatEdit } from '../types';
 import './Sidebar.css';
 
 interface SidebarProps {
-    selectedText: string;
     suggestions: Suggestion[];
     onAcceptSuggestion: (suggestion: Suggestion, replacement: string) => void;
     onDismissSuggestion: (suggestionId: string) => void;
     onRefreshSuggestion: (suggestion: Suggestion) => void;
-    onSendPrompt: (prompt: string) => void;
     isAnalyzing: boolean;
+    // Chat props
+    chatMessages: ChatMessage[];
+    onSendMessage: (message: string) => void;
+    onClearChat: () => void;
+    onAcceptEdit: (edit: ChatEdit) => void;
+    onRejectEdit: (messageId: string, editIndex: number) => void;
     isChatLoading: boolean;
+    hasDocument: boolean;
 }
 
 export function Sidebar({
-    selectedText,
     suggestions,
     onAcceptSuggestion,
     onDismissSuggestion,
     onRefreshSuggestion,
-    onSendPrompt,
     isAnalyzing,
+    chatMessages,
+    onSendMessage,
+    onClearChat,
+    onAcceptEdit,
+    onRejectEdit,
     isChatLoading,
+    hasDocument,
 }: SidebarProps) {
-    const [prompt, setPrompt] = useState('');
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
+    const [chatInput, setChatInput] = useState('');
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
+
+    const handleChatSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!prompt.trim() || isChatLoading) return;
-        onSendPrompt(prompt);
-        setPrompt('');
+        if (!chatInput.trim() || isChatLoading || !hasDocument) return;
+        onSendMessage(chatInput);
+        setChatInput('');
     };
 
     return (
         <aside className="sidebar">
-            {selectedText && (
-                <div className="selected-section">
-                    <div className="section-header">
-                        <span className="section-title">Selected Text</span>
-                    </div>
-                    <p className="selected-text">{selectedText}</p>
-
-                    <form className="prompt-form" onSubmit={handleSubmit}>
-                        <input
-                            type="text"
-                            className="prompt-input"
-                            placeholder="How to improve this?"
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            disabled={isChatLoading}
-                        />
-                        <button
-                            type="submit"
-                            className="prompt-submit"
-                            disabled={!prompt.trim() || isChatLoading}
-                        >
-                            {isChatLoading ? '...' : '→'}
-                        </button>
-                    </form>
-                </div>
-            )}
-
-            <div className="suggestions-section">
-                <div className="section-header">
+            {/* Auto Suggestions Section */}
+            <div className={`suggestions-section ${suggestionsCollapsed ? 'collapsed' : ''}`}>
+                <div
+                    className="section-header clickable"
+                    onClick={() => setSuggestionsCollapsed(!suggestionsCollapsed)}
+                >
                     <span className="section-title">
                         Suggestions {suggestions.length > 0 && `(${suggestions.length})`}
                     </span>
+                    <span className="collapse-icon">{suggestionsCollapsed ? '▼' : '▲'}</span>
                 </div>
 
-                {isAnalyzing && (
-                    <div className="loading-state">
-                        <div className="spinner" />
-                        <span>Analyzing resume...</span>
-                    </div>
-                )}
-
-                {!isAnalyzing && suggestions.length === 0 && (
-                    <div className="empty-state">
-                        <p>Click "Analyze" to get suggestions based on the job description</p>
-                    </div>
-                )}
-
-                <div className="suggestions-list">
-                    {suggestions.map((suggestion) => (
-                        <div
-                            key={suggestion.id}
-                            className={`suggestion-card ${expandedId === suggestion.id ? 'expanded' : ''}`}
-                        >
-                            <div
-                                className="suggestion-header"
-                                onClick={() => setExpandedId(expandedId === suggestion.id ? null : suggestion.id)}
-                            >
-                                <p className="original-text">{suggestion.original_text}</p>
-                                <span className="expand-icon">{expandedId === suggestion.id ? '▲' : '▼'}</span>
+                {!suggestionsCollapsed && (
+                    <>
+                        {isAnalyzing && (
+                            <div className="loading-state">
+                                <div className="spinner" />
+                                <span>Analyzing resume...</span>
                             </div>
+                        )}
 
-                            {expandedId === suggestion.id && (
-                                <div className="suggestion-options">
-                                    <div className="options-header">
-                                        <span>Alternatives</span>
-                                        <div className="option-actions">
-                                            <button
-                                                className="action-btn refresh"
-                                                onClick={() => onRefreshSuggestion(suggestion)}
-                                                title="Refresh"
-                                            >
-                                                ↻
-                                            </button>
-                                            <button
-                                                className="action-btn dismiss"
-                                                onClick={() => onDismissSuggestion(suggestion.id)}
-                                                title="Dismiss"
-                                            >
-                                                ×
-                                            </button>
-                                        </div>
+                        {!isAnalyzing && suggestions.length === 0 && (
+                            <div className="empty-state">
+                                <p>Click "Analyze" to get suggestions</p>
+                            </div>
+                        )}
+
+                        <div className="suggestions-list">
+                            {suggestions.map((suggestion) => (
+                                <div
+                                    key={suggestion.id}
+                                    className={`suggestion-card ${expandedId === suggestion.id ? 'expanded' : ''}`}
+                                >
+                                    <div
+                                        className="suggestion-header"
+                                        onClick={() => setExpandedId(expandedId === suggestion.id ? null : suggestion.id)}
+                                    >
+                                        <p className="original-text">{suggestion.original_text}</p>
+                                        <span className="expand-icon">{expandedId === suggestion.id ? '▲' : '▼'}</span>
                                     </div>
 
-                                    {suggestion.alternatives.map((alt, idx) => (
-                                        <button
-                                            key={idx}
-                                            className="alternative-btn"
-                                            onClick={() => onAcceptSuggestion(suggestion, alt)}
-                                        >
-                                            <span className="alt-number">{idx + 1}</span>
-                                            <span className="alt-text">{alt}</span>
-                                        </button>
+                                    {expandedId === suggestion.id && (
+                                        <div className="suggestion-options">
+                                            <div className="options-header">
+                                                <span>Alternatives</span>
+                                                <div className="option-actions">
+                                                    <button
+                                                        className="action-btn refresh"
+                                                        onClick={() => onRefreshSuggestion(suggestion)}
+                                                        title="Refresh"
+                                                    >
+                                                        ↻
+                                                    </button>
+                                                    <button
+                                                        className="action-btn dismiss"
+                                                        onClick={() => onDismissSuggestion(suggestion.id)}
+                                                        title="Dismiss"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {suggestion.alternatives.map((alt, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    className="alternative-btn"
+                                                    onClick={() => onAcceptSuggestion(suggestion, alt)}
+                                                >
+                                                    <span className="alt-number">{idx + 1}</span>
+                                                    <span className="alt-text">{alt}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Chat Section */}
+            <div className="chat-section">
+                <div className="section-header">
+                    <span className="section-title">Chat</span>
+                    {chatMessages.length > 0 && (
+                        <button className="clear-chat-btn" onClick={onClearChat}>
+                            Clear
+                        </button>
+                    )}
+                </div>
+
+                <div className="chat-messages">
+                    {chatMessages.length === 0 && !isChatLoading && (
+                        <div className="chat-empty">
+                            <p>Ask anything about your resume</p>
+                            <p className="chat-hint">e.g., "What skills am I missing?" or "Make my summary more impactful"</p>
+                        </div>
+                    )}
+
+                    {chatMessages.map((msg) => (
+                        <div key={msg.id} className={`chat-message ${msg.role}`}>
+                            <div className="message-content">{msg.content}</div>
+
+                            {msg.edits && msg.edits.length > 0 && (
+                                <div className="message-edits">
+                                    <div className="edits-label">Suggested edits:</div>
+                                    {msg.edits.map((edit, idx) => (
+                                        <div key={idx} className="edit-card">
+                                            <div className="edit-diff">
+                                                <div className="diff-old">
+                                                    <span className="diff-label">Current:</span>
+                                                    <span className="diff-text">{edit.original_text}</span>
+                                                </div>
+                                                <div className="diff-new">
+                                                    <span className="diff-label">Suggested:</span>
+                                                    <span className="diff-text">{edit.new_text}</span>
+                                                </div>
+                                                {edit.explanation && (
+                                                    <div className="diff-explanation">{edit.explanation}</div>
+                                                )}
+                                            </div>
+                                            <div className="edit-actions">
+                                                <button
+                                                    className="edit-accept"
+                                                    onClick={() => onAcceptEdit(edit)}
+                                                >
+                                                    Accept
+                                                </button>
+                                                <button
+                                                    className="edit-reject"
+                                                    onClick={() => onRejectEdit(msg.id, idx)}
+                                                >
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             )}
                         </div>
                     ))}
+
+                    {isChatLoading && (
+                        <div className="chat-message assistant loading">
+                            <div className="typing-indicator">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                        </div>
+                    )}
+
+                    <div ref={messagesEndRef} />
                 </div>
+
+                <form className="chat-input-form" onSubmit={handleChatSubmit}>
+                    <input
+                        type="text"
+                        className="chat-input"
+                        placeholder={hasDocument ? "Ask about your resume..." : "Upload a resume first"}
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        disabled={isChatLoading || !hasDocument}
+                    />
+                    <button
+                        type="submit"
+                        className="chat-submit"
+                        disabled={!chatInput.trim() || isChatLoading || !hasDocument}
+                    >
+                        {isChatLoading ? '...' : '→'}
+                    </button>
+                </form>
             </div>
         </aside>
     );

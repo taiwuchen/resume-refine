@@ -1,12 +1,13 @@
-import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
+import { useEffect, useCallback, useMemo, useState } from 'react';
 import mammoth from 'mammoth';
-import type { Change } from '../types';
+import type { Change, Suggestion } from '../types';
 import './DocumentPreview.css';
 
 interface DocumentPreviewProps {
     docId: string | null;
     changes: Change[];
-    onTextSelect: (text: string) => void;
+    suggestions: Suggestion[];
+    onRevertChange: (index: number) => void;
 }
 
 function escapeRegExp(str: string): string {
@@ -21,35 +22,55 @@ function escapeHtml(str: string): string {
         .replace(/"/g, '&quot;');
 }
 
-function applyChangesToHtml(html: string, changes: Change[]): string {
-    if (changes.length === 0) return html;
-
+function applyHighlights(
+    html: string,
+    changes: Change[],
+    suggestions: Suggestion[]
+): string {
     let result = html;
-    const sorted = [...changes].sort((a, b) => b.start - a.start);
 
-    for (const change of sorted) {
+    const changedOriginals = new Set(changes.map(c => c.original));
+
+    // Highlight pending suggestions (amber)
+    const sortedSuggestions = [...suggestions].sort((a, b) => b.start - a.start);
+    for (const suggestion of sortedSuggestions) {
+        if (changedOriginals.has(suggestion.original_text)) continue;
+        const escaped = escapeRegExp(suggestion.original_text);
+        const highlight = `<mark class="suggestion-pending" data-suggestion-id="${suggestion.id}">${escapeHtml(suggestion.original_text)}</mark>`;
+        result = result.replace(new RegExp(escaped), highlight);
+    }
+
+    // Highlight accepted changes (vermillion, clickable to revert)
+    const sortedChanges = [...changes].sort((a, b) => b.start - a.start);
+    for (let i = sortedChanges.length - 1; i >= 0; i--) {
+        const change = sortedChanges[i];
+        const originalIndex = changes.indexOf(change);
         const escaped = escapeRegExp(change.original);
-        const replacement = `<mark class="change-applied">${escapeHtml(change.replacement)}</mark>`;
-        result = result.replace(new RegExp(escaped), replacement);
+        const highlight = `<mark class="change-applied" data-change-index="${originalIndex}" title="Click to revert">${escapeHtml(change.replacement)}</mark>`;
+        result = result.replace(new RegExp(escaped), highlight);
     }
 
     return result;
 }
 
-export function DocumentPreview({ docId, changes, onTextSelect }: DocumentPreviewProps) {
-    const containerRef = useRef<HTMLDivElement>(null);
+export function DocumentPreview({
+    docId,
+    changes,
+    suggestions,
+    onRevertChange
+}: DocumentPreviewProps) {
     const [baseHtml, setBaseHtml] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
 
-    const handleMouseUp = useCallback(() => {
-        const selection = window.getSelection();
-        if (!selection || selection.isCollapsed) return;
-
-        const text = selection.toString().trim();
-        if (text) {
-            onTextSelect(text);
+    const handleClick = useCallback((e: React.MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('change-applied')) {
+            const index = target.getAttribute('data-change-index');
+            if (index !== null) {
+                onRevertChange(parseInt(index, 10));
+            }
         }
-    }, [onTextSelect]);
+    }, [onRevertChange]);
 
     useEffect(() => {
         if (!docId) {
@@ -77,20 +98,16 @@ export function DocumentPreview({ docId, changes, onTextSelect }: DocumentPrevie
     }, [docId]);
 
     const displayHtml = useMemo(() => {
-        return applyChangesToHtml(baseHtml, changes);
-    }, [baseHtml, changes]);
+        return applyHighlights(baseHtml, changes, suggestions);
+    }, [baseHtml, changes, suggestions]);
 
     return (
         <div className="document-preview">
             <div className="preview-header">
                 <span className="preview-title">Document Preview</span>
-                <span className="preview-hint">Select text to improve</span>
+                <span className="preview-hint">Click highlighted text to revert</span>
             </div>
-            <div
-                className="preview-container"
-                ref={containerRef}
-                onMouseUp={handleMouseUp}
-            >
+            <div className="preview-container" onClick={handleClick}>
                 {!docId && (
                     <div className="preview-empty">
                         <p>Upload a resume to see preview</p>
