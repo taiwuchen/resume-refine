@@ -31,20 +31,60 @@
 .preview-container {
     flex: 1;
     overflow: auto;
-    background: #f5f5f7;
+    background: #e8e8e8;
     padding: 0;
     cursor: text;
 }
 
-.preview-container .docx-wrapper {
-    background: #f5f5f7 !important;
-    padding: 20px !important;
+.mammoth-content {
+    background: #fff;
+    padding: 48px 56px;
+    margin: 24px;
+    min-height: calc(100% - 48px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 11pt;
+    line-height: 1.4;
+    color: #222;
 }
 
-.preview-container .docx-wrapper>section.docx {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-    margin-bottom: 20px !important;
-    background: #fff !important;
+.mammoth-content p {
+    margin: 0 0 0.5em 0;
+}
+
+.mammoth-content h1,
+.mammoth-content h2,
+.mammoth-content h3 {
+    margin: 1em 0 0.5em 0;
+    font-family: Arial, sans-serif;
+}
+
+.mammoth-content h1 { font-size: 16pt; }
+.mammoth-content h2 { font-size: 14pt; }
+.mammoth-content h3 { font-size: 12pt; }
+
+.mammoth-content ul,
+.mammoth-content ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+}
+
+.mammoth-content li {
+    margin: 0.25em 0;
+}
+
+.mammoth-content strong {
+    font-weight: bold;
+}
+
+.mammoth-content em {
+    font-style: italic;
+}
+
+.change-applied {
+    background: #d4edda;
+    border-radius: 2px;
+    padding: 0 2px;
 }
 
 .preview-empty {

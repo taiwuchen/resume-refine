@@ -143,6 +143,7 @@ function App() {
       <main className="main-content">
         <DocumentPreview
           docId={document?.doc_id ?? null}
+          changes={changes}
           onTextSelect={handleTextSelect}
         />
 
