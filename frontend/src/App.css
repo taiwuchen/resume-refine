@@ -1,15 +1,19 @@
 .app {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #0f0f1a;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-primary);
 }
 
 .main-content {
-  flex: 1;
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  overflow: hidden;
-  min-height: 0;
+    flex: 1;
+    display: flex;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
+    padding-top: var(--spacing-md);
+    overflow: hidden;
+    min-height: 0;
+    max-width: 1600px;
+    margin: 0 auto;
+    width: 100%;
 }
