@@ -154,42 +154,40 @@ export function Sidebar({
 
                                         {expandedId === suggestion.id && (
                                             <div className="suggestion-options">
-                                                <div className="options-header">
-                                                    <span>Alternatives</span>
-                                                    <div className="option-actions">
-                                                        {changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                            <button
-                                                                className="action-btn revert"
-                                                                onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
-                                                                title="Revert"
-                                                            >
-                                                                ↺
-                                                            </button>
-                                                        )}
+                                            <div className="options-header">
+                                                <span>Alternatives</span>
+                                                <div className="option-actions">
+                                                    <button
+                                                        className="action-btn refresh"
+                                                        onClick={() => onRefreshSuggestion(suggestion)}
+                                                        title="Refresh"
+                                                    >
+                                                        ↻
+                                                    </button>
+                                                    {!changedParagraphIds.has(suggestion.paragraph_id) && (
                                                         <button
-                                                            className="action-btn refresh"
-                                                            onClick={() => onRefreshSuggestion(suggestion)}
-                                                            title="Refresh"
+                                                            className="action-btn dismiss"
+                                                            onClick={() => onDismissSuggestion(suggestion.id)}
+                                                            title="Dismiss"
                                                         >
-                                                            ↻
+                                                            ×
                                                         </button>
-                                                        {!changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                            <button
-                                                                className="action-btn dismiss"
-                                                                onClick={() => onDismissSuggestion(suggestion.id)}
-                                                                title="Dismiss"
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    )}
                                                 </div>
+                                            </div>
 
-                                                {changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                    <div className="applied-note">
-                                                        This suggestion is currently applied in the document.
-                                                    </div>
-                                                )}
+                                            {changedParagraphIds.has(suggestion.paragraph_id) && (
+                                                <div className="applied-note">
+                                                    <span>This suggestion is currently applied in the document.</span>
+                                                    <button
+                                                        type="button"
+                                                        className="applied-note-revert"
+                                                        onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
+                                                    >
+                                                        Revert
+                                                    </button>
+                                                </div>
+                                            )}
 
                                                 {suggestion.alternatives.map((alt, idx) => (
                                                     <button

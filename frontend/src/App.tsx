@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Header } from './components/Header';
 import { DocumentPreview } from './components/DocumentPreview';
 import { Sidebar } from './components/Sidebar';
@@ -206,18 +206,6 @@ function App() {
     );
   };
   
-  const sortedSuggestions = useMemo(() => {
-    const changedParagraphIds = new Set(changes.map((change) => change.paragraph_id));
-    return [...suggestions].sort((left, right) => {
-      const leftApplied = changedParagraphIds.has(left.paragraph_id);
-      const rightApplied = changedParagraphIds.has(right.paragraph_id);
-      if (leftApplied !== rightApplied) {
-        return leftApplied ? 1 : -1;
-      }
-      return left.paragraph_id.localeCompare(right.paragraph_id);
-    });
-  }, [changes, suggestions]);
-
   return (
     <div className="app">
       <Header
@@ -241,7 +229,7 @@ function App() {
         />
 
         <Sidebar
-          suggestions={sortedSuggestions}
+          suggestions={suggestions}
           changes={changes}
           activeParagraphId={activeParagraphId}
           onAcceptSuggestion={handleAcceptSuggestion}

@@ -230,13 +230,16 @@
     color: var(--text-primary);
 }
 
-.action-btn.dismiss:hover,
-.action-btn.revert:hover {
+.action-btn.dismiss:hover {
     background: rgba(230, 57, 70, 0.1);
     color: var(--accent);
 }
 
 .applied-note {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
     padding: var(--spacing-xs) var(--spacing-sm);
     background: rgba(230, 57, 70, 0.05);
@@ -245,6 +248,22 @@
     color: var(--text-secondary);
     font-size: 0.8rem;
     line-height: 1.4;
+}
+
+.applied-note-revert {
+    border: none;
+    background: transparent;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 0;
+    flex: 0 0 auto;
+}
+
+.applied-note-revert:hover {
+    text-decoration: underline;
 }
 
 .alternative-btn {
