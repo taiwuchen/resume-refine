@@ -1,6 +1,7 @@
 .sidebar {
     width: 400px;
     min-width: 340px;
+    min-height: 0;
     background: var(--bg-paper);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
@@ -43,6 +44,7 @@
 .suggestions-section {
     display: flex;
     flex-direction: column;
+    min-height: 0;
     border-bottom: 1px solid var(--border);
     max-height: 40%;
     overflow: hidden;
@@ -93,6 +95,7 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--spacing-sm);
+    overscroll-behavior: contain;
 }
 
 .suggestion-card {
@@ -260,6 +263,7 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--spacing-sm);
+    overscroll-behavior: contain;
 }
 
 .chat-empty {
@@ -482,4 +486,12 @@
 .chat-submit:disabled {
     opacity: 0.4;
     cursor: not-allowed;
+}
+
+@media (max-width: 1024px) {
+    .sidebar {
+        flex: 1 1 0;
+        width: 100%;
+        min-width: 0;
+    }
 }

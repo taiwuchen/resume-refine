@@ -28,6 +28,12 @@
     box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+    height: 100%;
+}
+
 body {
     margin: 0;
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -38,6 +44,7 @@ body {
     font-size: 15px;
     line-height: 1.6;
     letter-spacing: -0.01em;
+    overflow: hidden;
 }
 
 ::-webkit-scrollbar {
