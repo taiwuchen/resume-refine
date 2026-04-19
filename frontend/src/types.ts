@@ -5,14 +5,36 @@ export interface PositionMapping {
     run_idx: number;
 }
 
+export interface ParagraphRun {
+    text: string;
+    start: number;
+    end: number;
+    bold: boolean;
+    italic: boolean;
+    underline: boolean;
+}
+
+export interface Paragraph {
+    paragraph_id: string;
+    start: number;
+    end: number;
+    text: string;
+    runs: ParagraphRun[];
+    is_editable: boolean;
+    is_list_item: boolean;
+    list_level: number;
+}
+
 export interface ParsedDocument {
     doc_id: string;
     full_text: string;
     position_map: PositionMapping[];
+    paragraphs: Paragraph[];
 }
 
 export interface Suggestion {
     id: string;
+    paragraph_id: string;
     start: number;
     end: number;
     original_text: string;
@@ -20,6 +42,7 @@ export interface Suggestion {
 }
 
 export interface Change {
+    paragraph_id: string;
     start: number;
     end: number;
     original: string;
@@ -27,6 +50,9 @@ export interface Change {
 }
 
 export interface ChatEdit {
+    paragraph_id: string;
+    start: number;
+    end: number;
     original_text: string;
     new_text: string;
     explanation: string;

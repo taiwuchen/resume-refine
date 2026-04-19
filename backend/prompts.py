@@ -8,8 +8,8 @@ ANALYZE_SYSTEM_PROMPT = dedent("""\
     RULES:
     1. Focus on bullet points, skills, and experience descriptions
     2. DO NOT suggest changes to: names, contact info, dates, locations, company names, job titles
-    3. Identify 3-7 specific text segments that could be improved
-    4. For each segment, provide exactly 3 alternative versions
+    3. Only choose paragraph IDs from the provided editable catalog
+    4. Identify 3-7 specific paragraphs that could be improved
     5. Alternatives should incorporate relevant keywords from the job description
     6. Keep alternatives similar in length to the original
 
@@ -17,7 +17,7 @@ ANALYZE_SYSTEM_PROMPT = dedent("""\
     {
         "suggestions": [
             {
-                "original_text": "exact text from resume to improve",
+                "paragraph_id": "p3",
                 "alternatives": [
                     "improved version 1",
                     "improved version 2", 
@@ -36,11 +36,12 @@ SUGGEST_SYSTEM_PROMPT = dedent("""\
     provide 3 alternative versions that better align with the job description.
 
     RULES:
-    1. Keep alternatives similar in length to the original
-    2. Incorporate relevant keywords from the job description naturally
-    3. Use strong action verbs and quantify achievements when possible
-    4. Maintain truthfulness - don't fabricate experiences
-    5. Each alternative should be distinctly different in phrasing
+    1. Rewrite the full paragraph, not a partial phrase
+    2. Keep alternatives similar in length to the original
+    3. Incorporate relevant keywords from the job description naturally
+    4. Use strong action verbs and quantify achievements when possible
+    5. Maintain truthfulness - don't fabricate experiences
+    6. Each alternative should be distinctly different in phrasing
 
     OUTPUT FORMAT (JSON):
     {
@@ -53,23 +54,6 @@ SUGGEST_SYSTEM_PROMPT = dedent("""\
 
     Return ONLY valid JSON, no explanation.
 """).strip()
-
-
-def build_analyze_user_prompt(resume_text: str, job_description: str) -> str:
-    return dedent(f"""\
-        ## RESUME
-
-        {resume_text}
-
-        ## JOB DESCRIPTION
-
-        {job_description}
-
-        ## TASK
-
-        Identify 3-7 specific text segments that could be improved to better match 
-        the job description. For each, provide exactly 3 alternatives.
-    """).strip()
 
 
 CHAT_SYSTEM_PROMPT = dedent("""\
@@ -85,8 +69,8 @@ CHAT_SYSTEM_PROMPT = dedent("""\
     WHEN SUGGESTING EDITS:
     If the user asks you to edit, improve, change, or modify any part of the resume,
     you MUST include an "edits" array in your JSON response. Each edit should contain:
-    - original_text: The exact text from the resume to replace
-    - new_text: The improved version
+    - paragraph_id: The exact paragraph ID from the editable catalog
+    - new_text: The improved full paragraph text
     - explanation: Brief reason for the change
 
     RESPONSE FORMAT:
@@ -100,14 +84,45 @@ CHAT_SYSTEM_PROMPT = dedent("""\
     Only include edits when the user explicitly asks for changes.
 
     IMPORTANT:
-    - For edits, original_text must be an EXACT match from the resume
+    - For edits, paragraph_id must come from the editable catalog
+    - Each edit must rewrite a full paragraph, not a phrase fragment
     - Keep your message conversational and helpful
     - Be specific when suggesting improvements
 """).strip()
 
 
-def build_chat_context_prompt(resume_text: str, job_description: str) -> str:
+def build_analyze_user_prompt(
+    resume_text: str,
+    job_description: str,
+    editable_paragraph_catalog: str,
+) -> str:
+    return dedent(f"""\
+        ## RESUME
+
+        {resume_text}
+
+        ## EDITABLE PARAGRAPHS
+
+        {editable_paragraph_catalog}
+
+        ## JOB DESCRIPTION
+
+        {job_description}
+
+        ## TASK
+
+        Identify 3-7 specific paragraph IDs that could be improved to better match 
+        the job description. For each, provide exactly 3 alternatives.
+    """).strip()
+
+
+def build_chat_context_prompt(
+    resume_text: str,
+    job_description: str,
+    editable_paragraph_catalog: str,
+) -> str:
     context = f"## RESUME\n\n{resume_text}"
+    context += f"\n\n## EDITABLE PARAGRAPHS\n\n{editable_paragraph_catalog}"
     if job_description.strip():
         context += f"\n\n## TARGET JOB DESCRIPTION\n\n{job_description}"
     return context
@@ -115,6 +130,7 @@ def build_chat_context_prompt(resume_text: str, job_description: str) -> str:
 
 def build_suggest_user_prompt(
     full_text: str,
+    paragraph_id: str,
     selected_text: str,
     job_description: str,
     user_prompt: str | None = None,
@@ -127,6 +143,10 @@ def build_suggest_user_prompt(
         ## SELECTED TEXT TO IMPROVE
 
         {selected_text}
+
+        ## PARAGRAPH ID
+
+        {paragraph_id}
 
         ## JOB DESCRIPTION
 

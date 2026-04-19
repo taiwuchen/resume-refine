@@ -40,6 +40,7 @@ export async function analyzeResume(
 
 export async function getSuggestions(
     docId: string,
+    paragraphId: string,
     start: number,
     end: number,
     selectedText: string,
@@ -51,6 +52,7 @@ export async function getSuggestions(
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             doc_id: docId,
+            paragraph_id: paragraphId,
             start,
             end,
             selected_text: selectedText,

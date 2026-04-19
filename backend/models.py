@@ -8,13 +8,35 @@ class PositionMapping(BaseModel):
     run_idx: int
 
 
+class ParagraphRun(BaseModel):
+    text: str
+    start: int
+    end: int
+    bold: bool = False
+    italic: bool = False
+    underline: bool = False
+
+
+class Paragraph(BaseModel):
+    paragraph_id: str
+    start: int
+    end: int
+    text: str
+    runs: list[ParagraphRun]
+    is_editable: bool
+    is_list_item: bool = False
+    list_level: int = 0
+
+
 class ParsedDocument(BaseModel):
     doc_id: str
     full_text: str
     position_map: list[PositionMapping]
+    paragraphs: list[Paragraph]
 
 
 class Change(BaseModel):
+    paragraph_id: str
     start: int
     end: int
     original: str
@@ -23,6 +45,7 @@ class Change(BaseModel):
 
 class Suggestion(BaseModel):
     id: str
+    paragraph_id: str
     start: int
     end: int
     original_text: str
@@ -40,6 +63,7 @@ class AnalyzeResponse(BaseModel):
 
 class SuggestRequest(BaseModel):
     doc_id: str
+    paragraph_id: str
     start: int
     end: int
     selected_text: str
@@ -62,6 +86,9 @@ class ChatMessage(BaseModel):
 
 
 class ChatEdit(BaseModel):
+    paragraph_id: str
+    start: int
+    end: int
     original_text: str
     new_text: str
     explanation: str

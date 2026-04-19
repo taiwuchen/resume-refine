@@ -1,22 +1,23 @@
 import json
 import uuid
-from models import Suggestion
+from models import ParsedDocument, Suggestion
 from services.llm import call_llm
+from services.document_utils import get_editable_paragraphs
 from prompts import SUGGEST_SYSTEM_PROMPT, build_suggest_user_prompt
 
 
 def generate_suggestions(
-    full_text: str,
+    doc: ParsedDocument,
+    paragraph_id: str,
     selected_text: str,
-    start: int,
-    end: int,
     job_description: str,
     user_prompt: str | None = None,
 ) -> Suggestion:
     """Generate 3 alternative suggestions for the selected text."""
     
     prompt = build_suggest_user_prompt(
-        full_text=full_text,
+        full_text=doc.full_text,
+        paragraph_id=paragraph_id,
         selected_text=selected_text,
         job_description=job_description,
         user_prompt=user_prompt,
@@ -29,11 +30,18 @@ def generate_suggestions(
     
     alternatives = parse_suggest_response(response)
     
+    paragraph = next(
+        candidate
+        for candidate in get_editable_paragraphs(doc)
+        if candidate.paragraph_id == paragraph_id
+    )
+
     return Suggestion(
         id=str(uuid.uuid4()),
-        start=start,
-        end=end,
-        original_text=selected_text,
+        paragraph_id=paragraph_id,
+        start=paragraph.start,
+        end=paragraph.end,
+        original_text=paragraph.text,
         alternatives=alternatives,
     )
 
@@ -46,7 +54,16 @@ def parse_suggest_response(response: str) -> list[str]:
     
     try:
         data = json.loads(text)
-        return data.get("alternatives", [])[:3]
+        alternatives = data.get("alternatives", [])
+        if not isinstance(alternatives, list):
+            return []
+
+        normalized = [
+            alternative.strip()
+            for alternative in alternatives
+            if isinstance(alternative, str) and alternative.strip()
+        ]
+        return normalized[:3]
     except json.JSONDecodeError:
         print(f"[suggester] Failed to parse response: {text[:200]}")
         return []

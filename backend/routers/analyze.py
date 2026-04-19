@@ -16,6 +16,6 @@ async def analyze(request: AnalyzeRequest):
     if not request.job_description.strip():
         raise HTTPException(400, "Job description is required")
     
-    suggestions = analyze_resume(doc.full_text, request.job_description)
+    suggestions = analyze_resume(doc, request.job_description)
     
     return AnalyzeResponse(suggestions=suggestions)

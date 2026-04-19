@@ -24,6 +24,4 @@ output/
 *.docx
 job_description.txt
 
-PROJECT.md
-
-.gemini
+AGENTS.md

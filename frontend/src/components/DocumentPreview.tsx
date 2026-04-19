@@ -1,105 +1,56 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
-import mammoth from 'mammoth';
-import type { Change, Suggestion } from '../types';
+import type { CSSProperties, ReactNode } from 'react';
+import type { Change, Paragraph, ParagraphRun, ParsedDocument, Suggestion } from '../types';
 import './DocumentPreview.css';
 
 interface DocumentPreviewProps {
-    docId: string | null;
+    document: ParsedDocument | null;
     changes: Change[];
     suggestions: Suggestion[];
     onRevertChange: (index: number) => void;
 }
 
-function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
+function renderFormattedRun(run: ParagraphRun, key: string): ReactNode {
+    let content: ReactNode = run.text || <br />;
 
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
-
-function applyHighlights(
-    html: string,
-    changes: Change[],
-    suggestions: Suggestion[]
-): string {
-    let result = html;
-
-    const changedOriginals = new Set(changes.map(c => c.original));
-
-    // Highlight pending suggestions (amber)
-    const sortedSuggestions = [...suggestions].sort((a, b) => b.start - a.start);
-    for (const suggestion of sortedSuggestions) {
-        if (changedOriginals.has(suggestion.original_text)) continue;
-        const escaped = escapeRegExp(suggestion.original_text);
-        const highlight = `<mark class="suggestion-pending" data-suggestion-id="${suggestion.id}">${escapeHtml(suggestion.original_text)}</mark>`;
-        result = result.replace(new RegExp(escaped), highlight);
+    if (run.bold) {
+        content = <strong>{content}</strong>;
+    }
+    if (run.italic) {
+        content = <em>{content}</em>;
+    }
+    if (run.underline) {
+        content = <u>{content}</u>;
     }
 
-    // Highlight accepted changes (vermillion, clickable to revert)
-    const sortedChanges = [...changes].sort((a, b) => b.start - a.start);
-    for (let i = sortedChanges.length - 1; i >= 0; i--) {
-        const change = sortedChanges[i];
-        const originalIndex = changes.indexOf(change);
-        const escaped = escapeRegExp(change.original);
-        const highlight = `<mark class="change-applied" data-change-index="${originalIndex}" title="Click to revert">${escapeHtml(change.replacement)}</mark>`;
-        result = result.replace(new RegExp(escaped), highlight);
+    return <span key={key}>{content}</span>;
+}
+
+function buildDisplayRuns(paragraph: Paragraph, change: Change | undefined): ParagraphRun[] {
+    if (!change) {
+        return paragraph.runs;
     }
 
-    return result;
+    const formattingSource = paragraph.runs[0];
+    return [{
+        text: change.replacement,
+        start: change.start,
+        end: change.end,
+        bold: formattingSource?.bold ?? false,
+        italic: formattingSource?.italic ?? false,
+        underline: formattingSource?.underline ?? false,
+    }];
 }
 
 export function DocumentPreview({
-    docId,
+    document,
     changes,
     suggestions,
-    onRevertChange
+    onRevertChange,
 }: DocumentPreviewProps) {
-    const [baseHtml, setBaseHtml] = useState<string>('');
-    const [error, setError] = useState<string | null>(null);
-
-    const handleClick = useCallback((e: React.MouseEvent) => {
-        const target = e.target as HTMLElement;
-        if (target.classList.contains('change-applied')) {
-            const index = target.getAttribute('data-change-index');
-            if (index !== null) {
-                onRevertChange(parseInt(index, 10));
-            }
-        }
-    }, [onRevertChange]);
-
-    useEffect(() => {
-        if (!docId) {
-            setBaseHtml('');
-            setError(null);
-            return;
-        }
-
-        const fetchAndConvert = async () => {
-            try {
-                setError(null);
-                const response = await fetch(`http://localhost:8000/api/document/${docId}`);
-                if (!response.ok) throw new Error('Failed to fetch document');
-
-                const arrayBuffer = await response.arrayBuffer();
-                const result = await mammoth.convertToHtml({ arrayBuffer });
-                setBaseHtml(result.value);
-            } catch (err) {
-                console.error('Document preview failed:', err);
-                setError('Failed to load document preview');
-            }
-        };
-
-        fetchAndConvert();
-    }, [docId]);
-
-    const displayHtml = useMemo(() => {
-        return applyHighlights(baseHtml, changes, suggestions);
-    }, [baseHtml, changes, suggestions]);
+    const changeIndexByParagraphId = new Map<string, number>(
+        changes.map((change, index) => [change.paragraph_id, index])
+    );
+    const suggestionIds = new Set(suggestions.map((suggestion) => suggestion.paragraph_id));
 
     return (
         <div className="document-preview">
@@ -107,20 +58,55 @@ export function DocumentPreview({
                 <span className="preview-title">Document Preview</span>
                 <span className="preview-hint">Click highlighted text to revert</span>
             </div>
-            <div className="preview-container" onClick={handleClick}>
-                {!docId && (
+            <div className="preview-container">
+                {!document && (
                     <div className="preview-empty">
                         <p>Upload a resume to see preview</p>
                     </div>
                 )}
-                {error && (
-                    <p className="preview-error">{error}</p>
-                )}
-                {docId && !error && baseHtml && (
-                    <div
-                        className="mammoth-content"
-                        dangerouslySetInnerHTML={{ __html: displayHtml }}
-                    />
+                {document && (
+                    <div className="structured-content">
+                        {document.paragraphs.map((paragraph) => {
+                            const changeIndex = changeIndexByParagraphId.get(paragraph.paragraph_id);
+                            const change = changeIndex !== undefined ? changes[changeIndex] : undefined;
+                            const isSuggested = suggestionIds.has(paragraph.paragraph_id) && changeIndex === undefined;
+                            const paragraphClassName = [
+                                'preview-paragraph',
+                                paragraph.is_list_item ? 'preview-list-item' : '',
+                                isSuggested ? 'suggestion-pending' : '',
+                                change ? 'change-applied' : '',
+                            ].filter(Boolean).join(' ');
+                            const displayRuns = buildDisplayRuns(paragraph, change);
+                            const listIndent = `${paragraph.list_level * 20}px`;
+                            const paragraphStyle: CSSProperties = paragraph.is_list_item
+                                ? { paddingLeft: listIndent }
+                                : {};
+
+                            return (
+                                <div
+                                    key={paragraph.paragraph_id}
+                                    data-paragraph-id={paragraph.paragraph_id}
+                                    className={paragraphClassName}
+                                    onClick={() => {
+                                        if (changeIndex !== undefined) {
+                                            onRevertChange(changeIndex);
+                                        }
+                                    }}
+                                    style={paragraphStyle}
+                                    title={change ? 'Click to revert' : undefined}
+                                >
+                                    {paragraph.is_list_item && (
+                                        <span className="preview-bullet" aria-hidden="true">•</span>
+                                    )}
+                                    <span className="preview-paragraph-text">
+                                        {displayRuns.length > 0
+                                            ? displayRuns.map((run, index) => renderFormattedRun(run, `${paragraph.paragraph_id}-${index}`))
+                                            : <br />}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
         </div>

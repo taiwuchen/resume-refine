@@ -24,6 +24,8 @@ async def export_resume(request: ExportRequest):
     
     try:
         apply_changes_to_docx(original_path, doc, request.changes, output_path)
+    except ValueError as e:
+        raise HTTPException(400, f"Invalid export change set: {e}")
     except Exception as e:
         raise HTTPException(500, f"Failed to export: {e}")
     

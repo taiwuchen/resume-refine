@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Header } from './components/Header';
 import { DocumentPreview } from './components/DocumentPreview';
 import { Sidebar } from './components/Sidebar';
 import type { ParsedDocument, Suggestion, Change, ChatMessage, ChatEdit } from './types';
 import { uploadResume, analyzeResume, getSuggestions, exportResume, sendChatMessage } from './hooks/useApi';
+import { getVisibleSuggestions, removeChangeAtIndex, upsertParagraphChange } from './utils/changeState';
 import './App.css';
 
 function App() {
@@ -67,21 +68,21 @@ function App() {
 
   const handleAcceptSuggestion = (suggestion: Suggestion, replacement: string) => {
     const change: Change = {
+      paragraph_id: suggestion.paragraph_id,
       start: suggestion.start,
       end: suggestion.end,
       original: suggestion.original_text,
       replacement,
     };
-    setChanges([...changes, change]);
-    setSuggestions(suggestions.filter((s) => s.id !== suggestion.id));
+    setChanges((prev) => upsertParagraphChange(prev, change));
   };
 
   const handleDismissSuggestion = (suggestionId: string) => {
-    setSuggestions(suggestions.filter((s) => s.id !== suggestionId));
+    setSuggestions((prev) => prev.filter((suggestion) => suggestion.id !== suggestionId));
   };
 
   const handleRevertChange = (index: number) => {
-    setChanges(changes.filter((_, i) => i !== index));
+    setChanges((prev) => removeChangeAtIndex(prev, index));
   };
 
   const handleRefreshSuggestion = async (suggestion: Suggestion) => {
@@ -90,14 +91,15 @@ function App() {
     try {
       const newSuggestion = await getSuggestions(
         document.doc_id,
+        suggestion.paragraph_id,
         suggestion.start,
         suggestion.end,
         suggestion.original_text,
         jobDescription
       );
-      setSuggestions(
-        suggestions.map((s) => (s.id === suggestion.id ? newSuggestion : s))
-      );
+      setSuggestions((prev) => prev.map((currentSuggestion) => (
+        currentSuggestion.id === suggestion.id ? newSuggestion : currentSuggestion
+      )));
     } catch (error) {
       console.error('Refresh failed:', error);
     }
@@ -155,29 +157,24 @@ function App() {
   };
 
   const handleAcceptEdit = (edit: ChatEdit) => {
-    // Find position in full text (simple substring search)
-    const fullText = document?.full_text || '';
-    const start = fullText.indexOf(edit.original_text);
-    if (start === -1) {
-      alert('Could not find the original text in the document');
-      return;
-    }
-
     const change: Change = {
-      start,
-      end: start + edit.original_text.length,
+      paragraph_id: edit.paragraph_id,
+      start: edit.start,
+      end: edit.end,
       original: edit.original_text,
       replacement: edit.new_text,
     };
 
-    setChanges([...changes, change]);
+    setChanges((prev) => upsertParagraphChange(prev, change));
 
-    // Remove the edit from the message
     setChatMessages((prev) =>
       prev.map((msg) => ({
         ...msg,
         edits: msg.edits?.filter(
-          (e) => e.original_text !== edit.original_text || e.new_text !== edit.new_text
+          (candidate) => !(
+            candidate.paragraph_id === edit.paragraph_id
+            && candidate.new_text === edit.new_text
+          )
         ),
       }))
     );
@@ -195,6 +192,11 @@ function App() {
     );
   };
 
+  const visibleSuggestions = useMemo(
+    () => getVisibleSuggestions(suggestions, changes),
+    [changes, suggestions]
+  );
+
   return (
     <div className="app">
       <Header
@@ -210,14 +212,14 @@ function App() {
 
       <main className="main-content">
         <DocumentPreview
-          docId={document?.doc_id ?? null}
+          document={document}
           changes={changes}
           suggestions={suggestions}
           onRevertChange={handleRevertChange}
         />
 
         <Sidebar
-          suggestions={suggestions}
+          suggestions={visibleSuggestions}
           onAcceptSuggestion={handleAcceptSuggestion}
           onDismissSuggestion={handleDismissSuggestion}
           onRefreshSuggestion={handleRefreshSuggestion}

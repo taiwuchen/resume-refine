@@ -13,7 +13,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=404, detail="Document not found")
 
     response = handle_chat(
-        resume_text=doc.full_text,
+        doc=doc,
         job_description=request.job_description,
         messages=request.messages,
     )

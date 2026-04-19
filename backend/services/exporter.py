@@ -12,11 +12,33 @@ def apply_changes_to_docx(
     """Apply text changes to original DOCX while preserving formatting."""
     
     docx = Document(original_path)
-    
-    sorted_changes = sorted(changes, key=lambda c: c.start, reverse=True)
-    
-    for change in sorted_changes:
-        apply_single_change(docx, doc, change)
+
+    paragraph_map = {
+        paragraph.paragraph_id: (index, paragraph)
+        for index, paragraph in enumerate(doc.paragraphs)
+    }
+    seen_paragraph_ids: set[str] = set()
+
+    for change in changes:
+        paragraph_entry = paragraph_map.get(change.paragraph_id)
+        if paragraph_entry is None:
+            raise ValueError(f"Unknown paragraph: {change.paragraph_id}")
+
+        paragraph_index, paragraph = paragraph_entry
+        if not paragraph.is_editable:
+            raise ValueError(f"Paragraph is not editable: {change.paragraph_id}")
+
+        if change.paragraph_id in seen_paragraph_ids:
+            raise ValueError(f"Duplicate change for paragraph: {change.paragraph_id}")
+
+        if change.start != paragraph.start or change.end != paragraph.end:
+            raise ValueError("Changes must target a full paragraph")
+
+        if change.original != paragraph.text:
+            raise ValueError("Change original text does not match the paragraph")
+
+        apply_single_change(docx, paragraph_index, change.replacement)
+        seen_paragraph_ids.add(change.paragraph_id)
     
     output_path.parent.mkdir(parents=True, exist_ok=True)
     docx.save(output_path)
@@ -24,42 +46,17 @@ def apply_changes_to_docx(
     return output_path
 
 
-def apply_single_change(docx: Document, doc: ParsedDocument, change: Change) -> None:
-    """Apply a single text change to the DOCX document."""
-    
-    affected_mappings = [
-        m for m in doc.position_map
-        if m.end > change.start and m.start < change.end
-    ]
-    
-    if not affected_mappings:
-        print(f"[exporter] No mappings found for change at {change.start}-{change.end}")
+def apply_single_change(docx: Document, paragraph_index: int, replacement: str) -> None:
+    """Apply a single full-paragraph text change to the DOCX document."""
+
+    if paragraph_index >= len(docx.paragraphs):
+        raise ValueError(f"Paragraph index out of range: {paragraph_index}")
+
+    paragraph = docx.paragraphs[paragraph_index]
+    if paragraph.runs:
+        paragraph.runs[0].text = replacement
+        for run in paragraph.runs[1:]:
+            run.text = ""
         return
-    
-    if len(affected_mappings) == 1:
-        m = affected_mappings[0]
-        para = docx.paragraphs[m.para_idx]
-        if m.run_idx < len(para.runs):
-            run = para.runs[m.run_idx]
-            
-            run_start_in_text = m.start
-            local_start = change.start - run_start_in_text
-            local_end = change.end - run_start_in_text
-            
-            local_start = max(0, local_start)
-            local_end = min(len(run.text), local_end)
-            
-            run.text = run.text[:local_start] + change.replacement + run.text[local_end:]
-    else:
-        first = affected_mappings[0]
-        para = docx.paragraphs[first.para_idx]
-        if first.run_idx < len(para.runs):
-            run = para.runs[first.run_idx]
-            local_start = max(0, change.start - first.start)
-            run.text = run.text[:local_start] + change.replacement
-        
-        for m in affected_mappings[1:]:
-            if m.para_idx < len(docx.paragraphs):
-                para = docx.paragraphs[m.para_idx]
-                if m.run_idx < len(para.runs):
-                    para.runs[m.run_idx].text = ""
+
+    paragraph.add_run(replacement)

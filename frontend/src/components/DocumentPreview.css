@@ -34,10 +34,9 @@
     flex: 1;
     overflow: auto;
     background: var(--bg-secondary);
-    cursor: text;
 }
 
-.mammoth-content {
+.structured-content {
     background: var(--bg-paper);
     padding: 56px 64px;
     margin: var(--spacing-lg);
@@ -49,58 +48,45 @@
     color: var(--text-primary);
 }
 
-.mammoth-content p {
-    margin: 0 0 0.6em 0;
-}
-
-.mammoth-content h1,
-.mammoth-content h2,
-.mammoth-content h3 {
-    margin: 1.2em 0 0.5em 0;
-    font-family: 'Outfit', sans-serif;
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    color: var(--text-primary);
-}
-
-.mammoth-content h1 { font-size: 18pt; }
-.mammoth-content h2 { font-size: 14pt; }
-.mammoth-content h3 { font-size: 12pt; }
-
-.mammoth-content ul,
-.mammoth-content ol {
-    margin: 0.5em 0;
-    padding-left: 1.5em;
-}
-
-.mammoth-content li {
-    margin: 0.3em 0;
-}
-
-.mammoth-content strong {
+.structured-content strong {
     font-weight: bold;
 }
 
-.mammoth-content em {
+.structured-content em {
     font-style: italic;
 }
 
-.mammoth-content a {
-    color: var(--text-primary);
-    text-decoration: underline;
-    text-underline-offset: 2px;
+.preview-paragraph {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+    margin: 0 0 0.6em 0;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+.preview-list-item {
+    padding-left: 0;
+}
+
+.preview-bullet {
+    flex: 0 0 auto;
+    width: 1em;
+}
+
+.preview-paragraph-text {
+    flex: 1;
+    min-width: 0;
 }
 
 .suggestion-pending {
     background: rgba(245, 158, 11, 0.15);
     border-bottom: 2px solid #F59E0B;
-    padding: 0 2px;
 }
 
 .change-applied {
     background: rgba(230, 57, 70, 0.12);
     border-bottom: 2px solid var(--accent);
-    padding: 0 2px;
     cursor: pointer;
     transition: background var(--transition);
 }
