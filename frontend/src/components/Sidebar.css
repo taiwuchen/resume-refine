@@ -10,21 +10,31 @@
     overflow: hidden;
 }
 
-.section-header {
-    padding: var(--spacing-sm) var(--spacing-md);
+.sidebar-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs);
     border-bottom: 1px solid var(--border-light);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.section-header.clickable {
-    cursor: pointer;
-    transition: background var(--transition);
-}
-
-.section-header.clickable:hover {
     background: var(--bg-secondary);
+}
+
+.sidebar-tab {
+    border: none;
+    background: transparent;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background var(--transition), box-shadow var(--transition);
+}
+
+.sidebar-tab.active {
+    background: var(--bg-paper);
+    box-shadow: var(--shadow-sm);
+}
+
+.sidebar-tab:hover {
+    background: rgba(255, 255, 255, 0.6);
 }
 
 .section-title {
@@ -35,29 +45,26 @@
     letter-spacing: 0.08em;
 }
 
-.collapse-icon {
-    font-size: 0.6rem;
-    color: var(--text-muted);
-}
-
-/* Suggestions Section */
-.suggestions-section {
-    display: flex;
-    flex-direction: column;
+.tab-panel {
+    flex: 1;
     min-height: 0;
-    border-bottom: 1px solid var(--border);
-    max-height: 40%;
     overflow: hidden;
 }
 
-.suggestions-section.collapsed {
-    max-height: none;
+.tab-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    height: 100%;
 }
 
-.suggestions-section.collapsed .suggestions-list,
-.suggestions-section.collapsed .loading-state,
-.suggestions-section.collapsed .empty-state {
-    display: none;
+.tab-view-header {
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 0 0 auto;
 }
 
 .loading-state {
@@ -223,11 +230,7 @@
     color: var(--text-primary);
 }
 
-.action-btn.dismiss:hover {
-    background: rgba(230, 57, 70, 0.1);
-    color: var(--accent);
-}
-
+.action-btn.dismiss:hover,
 .action-btn.revert:hover {
     background: rgba(230, 57, 70, 0.1);
     color: var(--accent);
@@ -283,15 +286,6 @@
     color: var(--text-primary);
     line-height: 1.5;
     font-family: inherit;
-}
-
-/* Chat Section */
-.chat-section {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
-    overflow: hidden;
 }
 
 .clear-chat-btn {
@@ -462,7 +456,6 @@
     color: var(--text-primary);
 }
 
-/* Typing indicator */
 .typing-indicator {
     display: flex;
     gap: 4px;
@@ -485,7 +478,6 @@
     40% { transform: scale(1); opacity: 1; }
 }
 
-/* Chat input */
 .chat-input-form {
     display: flex;
     gap: var(--spacing-xs);

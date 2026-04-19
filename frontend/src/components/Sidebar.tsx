@@ -12,7 +12,6 @@ interface SidebarProps {
     onSelectSuggestion: (paragraphId: string | null) => void;
     onRevertSuggestion: (paragraphId: string) => void;
     isAnalyzing: boolean;
-    // Chat props
     chatMessages: ChatMessage[];
     onSendMessage: (message: string) => void;
     onClearChat: () => void;
@@ -40,8 +39,8 @@ export function Sidebar({
     isChatLoading,
     hasDocument,
 }: SidebarProps) {
+    const [activeTab, setActiveTab] = useState<'suggestions' | 'chat'>('suggestions');
     const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [suggestionsCollapsed, setSuggestionsCollapsed] = useState(false);
     const [chatInput, setChatInput] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const suggestionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
@@ -55,15 +54,16 @@ export function Sidebar({
     );
 
     useEffect(() => {
+        if (activeTab !== 'chat') return;
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [chatMessages]);
+    }, [activeTab, chatMessages]);
 
     useEffect(() => {
         if (!activeParagraphId) return;
         const activeSuggestion = suggestions.find((suggestion) => suggestion.paragraph_id === activeParagraphId);
         if (!activeSuggestion) return;
 
-        setSuggestionsCollapsed(false);
+        setActiveTab('suggestions');
         setExpandedId(activeSuggestion.id);
         suggestionCardRefs.current[activeSuggestion.id]?.scrollIntoView({
             behavior: 'smooth',
@@ -80,20 +80,38 @@ export function Sidebar({
 
     return (
         <aside className="sidebar">
-            {/* Auto Suggestions Section */}
-            <div className={`suggestions-section ${suggestionsCollapsed ? 'collapsed' : ''}`}>
-                <div
-                    className="section-header clickable"
-                    onClick={() => setSuggestionsCollapsed(!suggestionsCollapsed)}
+            <div className="sidebar-tabs" role="tablist" aria-label="Right panel sections">
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'suggestions'}
+                    className={`sidebar-tab ${activeTab === 'suggestions' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('suggestions')}
                 >
                     <span className="section-title">
                         Suggestions {suggestions.length > 0 && `(${pendingCount} pending)`}
                     </span>
-                    <span className="collapse-icon">{suggestionsCollapsed ? '▼' : '▲'}</span>
-                </div>
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'chat'}
+                    className={`sidebar-tab ${activeTab === 'chat' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('chat')}
+                >
+                    <span className="section-title">Chat</span>
+                </button>
+            </div>
 
-                {!suggestionsCollapsed && (
-                    <>
+            <div className="tab-panel">
+                {activeTab === 'suggestions' && (
+                    <div className="tab-view suggestions-tab" role="tabpanel">
+                        <div className="tab-view-header">
+                            <span className="section-title">
+                                Suggestions {suggestions.length > 0 && `(${pendingCount} pending)`}
+                            </span>
+                        </div>
+
                         {isAnalyzing && (
                             <div className="loading-state">
                                 <div className="spinner" />
@@ -107,181 +125,185 @@ export function Sidebar({
                             </div>
                         )}
 
-                        <div className="suggestions-list">
-                            {suggestions.map((suggestion) => (
-                                <div
-                                    key={suggestion.id}
-                                    ref={(node) => {
-                                        suggestionCardRefs.current[suggestion.id] = node;
-                                    }}
-                                    className={`suggestion-card ${expandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}
-                                >
+                        {!isAnalyzing && suggestions.length > 0 && (
+                            <div className="suggestions-list">
+                                {suggestions.map((suggestion) => (
                                     <div
-                                        className="suggestion-header"
-                                        onClick={() => {
-                                            onSelectSuggestion(suggestion.paragraph_id);
-                                            setExpandedId(expandedId === suggestion.id ? null : suggestion.id);
+                                        key={suggestion.id}
+                                        ref={(node) => {
+                                            suggestionCardRefs.current[suggestion.id] = node;
                                         }}
+                                        className={`suggestion-card ${expandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}
                                     >
-                                        <div className="suggestion-summary">
-                                            <div className={`suggestion-status ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}>
-                                                {changedParagraphIds.has(suggestion.paragraph_id) ? 'Applied' : 'Pending'}
+                                        <div
+                                            className="suggestion-header"
+                                            onClick={() => {
+                                                setActiveTab('suggestions');
+                                                onSelectSuggestion(suggestion.paragraph_id);
+                                                setExpandedId(expandedId === suggestion.id ? null : suggestion.id);
+                                            }}
+                                        >
+                                            <div className="suggestion-summary">
+                                                <div className={`suggestion-status ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}>
+                                                    {changedParagraphIds.has(suggestion.paragraph_id) ? 'Applied' : 'Pending'}
+                                                </div>
+                                                <p className="original-text">{suggestion.original_text}</p>
                                             </div>
-                                            <p className="original-text">{suggestion.original_text}</p>
+                                            <span className="expand-icon">{expandedId === suggestion.id ? '▲' : '▼'}</span>
                                         </div>
-                                        <span className="expand-icon">{expandedId === suggestion.id ? '▲' : '▼'}</span>
-                                    </div>
 
-                                    {expandedId === suggestion.id && (
-                                        <div className="suggestion-options">
-                                            <div className="options-header">
-                                                <span>Alternatives</span>
-                                                <div className="option-actions">
-                                                    {changedParagraphIds.has(suggestion.paragraph_id) && (
+                                        {expandedId === suggestion.id && (
+                                            <div className="suggestion-options">
+                                                <div className="options-header">
+                                                    <span>Alternatives</span>
+                                                    <div className="option-actions">
+                                                        {changedParagraphIds.has(suggestion.paragraph_id) && (
+                                                            <button
+                                                                className="action-btn revert"
+                                                                onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
+                                                                title="Revert"
+                                                            >
+                                                                ↺
+                                                            </button>
+                                                        )}
                                                         <button
-                                                            className="action-btn revert"
-                                                            onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
-                                                            title="Revert"
+                                                            className="action-btn refresh"
+                                                            onClick={() => onRefreshSuggestion(suggestion)}
+                                                            title="Refresh"
                                                         >
-                                                            ↺
+                                                            ↻
                                                         </button>
-                                                    )}
+                                                        {!changedParagraphIds.has(suggestion.paragraph_id) && (
+                                                            <button
+                                                                className="action-btn dismiss"
+                                                                onClick={() => onDismissSuggestion(suggestion.id)}
+                                                                title="Dismiss"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {changedParagraphIds.has(suggestion.paragraph_id) && (
+                                                    <div className="applied-note">
+                                                        This suggestion is currently applied in the document.
+                                                    </div>
+                                                )}
+
+                                                {suggestion.alternatives.map((alt, idx) => (
                                                     <button
-                                                        className="action-btn refresh"
-                                                        onClick={() => onRefreshSuggestion(suggestion)}
-                                                        title="Refresh"
+                                                        key={idx}
+                                                        className="alternative-btn"
+                                                        onClick={() => onAcceptSuggestion(suggestion, alt)}
                                                     >
-                                                        ↻
+                                                        <span className="alt-number">{idx + 1}</span>
+                                                        <span className="alt-text">{alt}</span>
                                                     </button>
-                                                    {!changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                        <button
-                                                            className="action-btn dismiss"
-                                                            onClick={() => onDismissSuggestion(suggestion.id)}
-                                                            title="Dismiss"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                ))}
                                             </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
-                                            {changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                <div className="applied-note">
-                                                    This suggestion is currently applied in the document.
+                {activeTab === 'chat' && (
+                    <div className="tab-view chat-tab" role="tabpanel">
+                        <div className="tab-view-header">
+                            <span className="section-title">Chat</span>
+                            {chatMessages.length > 0 && (
+                                <button className="clear-chat-btn" onClick={onClearChat}>
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="chat-messages">
+                            {chatMessages.length === 0 && !isChatLoading && (
+                                <div className="chat-empty">
+                                    <p>Ask anything about your resume</p>
+                                    <p className="chat-hint">e.g., "What skills am I missing?" or "Make my summary more impactful"</p>
+                                </div>
+                            )}
+
+                            {chatMessages.map((msg) => (
+                                <div key={msg.id} className={`chat-message ${msg.role}`}>
+                                    <div className="message-content">{msg.content}</div>
+
+                                    {msg.edits && msg.edits.length > 0 && (
+                                        <div className="message-edits">
+                                            <div className="edits-label">Suggested edits:</div>
+                                            {msg.edits.map((edit, idx) => (
+                                                <div key={idx} className="edit-card">
+                                                    <div className="edit-diff">
+                                                        <div className="diff-old">
+                                                            <span className="diff-label">Current:</span>
+                                                            <span className="diff-text">{edit.original_text}</span>
+                                                        </div>
+                                                        <div className="diff-new">
+                                                            <span className="diff-label">Suggested:</span>
+                                                            <span className="diff-text">{edit.new_text}</span>
+                                                        </div>
+                                                        {edit.explanation && (
+                                                            <div className="diff-explanation">{edit.explanation}</div>
+                                                        )}
+                                                    </div>
+                                                    <div className="edit-actions">
+                                                        <button
+                                                            className="edit-accept"
+                                                            onClick={() => onAcceptEdit(edit)}
+                                                        >
+                                                            Accept
+                                                        </button>
+                                                        <button
+                                                            className="edit-reject"
+                                                            onClick={() => onRejectEdit(msg.id, idx)}
+                                                        >
+                                                            Dismiss
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            )}
-
-                                            {suggestion.alternatives.map((alt, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    className="alternative-btn"
-                                                    onClick={() => onAcceptSuggestion(suggestion, alt)}
-                                                >
-                                                    <span className="alt-number">{idx + 1}</span>
-                                                    <span className="alt-text">{alt}</span>
-                                                </button>
                                             ))}
                                         </div>
                                     )}
                                 </div>
                             ))}
-                        </div>
-                    </>
-                )}
-            </div>
 
-            {/* Chat Section */}
-            <div className="chat-section">
-                <div className="section-header">
-                    <span className="section-title">Chat</span>
-                    {chatMessages.length > 0 && (
-                        <button className="clear-chat-btn" onClick={onClearChat}>
-                            Clear
-                        </button>
-                    )}
-                </div>
-
-                <div className="chat-messages">
-                    {chatMessages.length === 0 && !isChatLoading && (
-                        <div className="chat-empty">
-                            <p>Ask anything about your resume</p>
-                            <p className="chat-hint">e.g., "What skills am I missing?" or "Make my summary more impactful"</p>
-                        </div>
-                    )}
-
-                    {chatMessages.map((msg) => (
-                        <div key={msg.id} className={`chat-message ${msg.role}`}>
-                            <div className="message-content">{msg.content}</div>
-
-                            {msg.edits && msg.edits.length > 0 && (
-                                <div className="message-edits">
-                                    <div className="edits-label">Suggested edits:</div>
-                                    {msg.edits.map((edit, idx) => (
-                                        <div key={idx} className="edit-card">
-                                            <div className="edit-diff">
-                                                <div className="diff-old">
-                                                    <span className="diff-label">Current:</span>
-                                                    <span className="diff-text">{edit.original_text}</span>
-                                                </div>
-                                                <div className="diff-new">
-                                                    <span className="diff-label">Suggested:</span>
-                                                    <span className="diff-text">{edit.new_text}</span>
-                                                </div>
-                                                {edit.explanation && (
-                                                    <div className="diff-explanation">{edit.explanation}</div>
-                                                )}
-                                            </div>
-                                            <div className="edit-actions">
-                                                <button
-                                                    className="edit-accept"
-                                                    onClick={() => onAcceptEdit(edit)}
-                                                >
-                                                    Accept
-                                                </button>
-                                                <button
-                                                    className="edit-reject"
-                                                    onClick={() => onRejectEdit(msg.id, idx)}
-                                                >
-                                                    Dismiss
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                            {isChatLoading && (
+                                <div className="chat-message assistant loading">
+                                    <div className="typing-indicator">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
                                 </div>
                             )}
+
+                            <div ref={messagesEndRef} />
                         </div>
-                    ))}
 
-                    {isChatLoading && (
-                        <div className="chat-message assistant loading">
-                            <div className="typing-indicator">
-                                <span></span>
-                                <span></span>
-                                <span></span>
-                            </div>
-                        </div>
-                    )}
-
-                    <div ref={messagesEndRef} />
-                </div>
-
-                <form className="chat-input-form" onSubmit={handleChatSubmit}>
-                    <input
-                        type="text"
-                        className="chat-input"
-                        placeholder={hasDocument ? "Ask about your resume..." : "Upload a resume first"}
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        disabled={isChatLoading || !hasDocument}
-                    />
-                    <button
-                        type="submit"
-                        className="chat-submit"
-                        disabled={!chatInput.trim() || isChatLoading || !hasDocument}
-                    >
-                        {isChatLoading ? '...' : '→'}
-                    </button>
-                </form>
+                        <form className="chat-input-form" onSubmit={handleChatSubmit}>
+                            <input
+                                type="text"
+                                className="chat-input"
+                                placeholder={hasDocument ? "Ask about your resume..." : "Upload a resume first"}
+                                value={chatInput}
+                                onChange={(e) => setChatInput(e.target.value)}
+                                disabled={isChatLoading || !hasDocument}
+                            />
+                            <button
+                                type="submit"
+                                className="chat-submit"
+                                disabled={!chatInput.trim() || isChatLoading || !hasDocument}
+                            >
+                                {isChatLoading ? '...' : '→'}
+                            </button>
+                        </form>
+                    </div>
+                )}
             </div>
         </aside>
     );

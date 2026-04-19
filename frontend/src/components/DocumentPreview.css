@@ -109,37 +109,6 @@
     background: rgba(17, 17, 17, 0.06);
 }
 
-.preview-action-btn,
-.preview-selection-badge {
-    flex: 0 0 auto;
-    margin-left: var(--spacing-sm);
-}
-
-.preview-action-btn {
-    border: 1px solid rgba(230, 57, 70, 0.25);
-    background: rgba(230, 57, 70, 0.08);
-    color: var(--accent);
-    border-radius: 999px;
-    padding: 0.2rem 0.65rem;
-    font-size: 0.75rem;
-    font-family: inherit;
-    cursor: pointer;
-}
-
-.preview-action-btn:hover {
-    background: rgba(230, 57, 70, 0.15);
-}
-
-.preview-selection-badge {
-    border: 1px solid rgba(245, 158, 11, 0.25);
-    background: rgba(245, 158, 11, 0.1);
-    color: #B45309;
-    border-radius: 999px;
-    padding: 0.2rem 0.65rem;
-    font-size: 0.75rem;
-    line-height: 1.3;
-}
-
 .preview-empty {
     display: flex;
     align-items: center;

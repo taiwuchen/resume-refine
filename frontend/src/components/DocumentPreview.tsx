@@ -9,7 +9,6 @@ interface DocumentPreviewProps {
     suggestions: Suggestion[];
     activeParagraphId: string | null;
     onSelectParagraph: (paragraphId: string | null) => void;
-    onRevertChange: (paragraphId: string) => void;
 }
 
 function renderFormattedRun(run: ParagraphRun, key: string): ReactNode {
@@ -50,7 +49,6 @@ export function DocumentPreview({
     suggestions,
     activeParagraphId,
     onSelectParagraph,
-    onRevertChange,
 }: DocumentPreviewProps) {
     const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const changeByParagraphId = new Map<string, Change>(
@@ -123,21 +121,6 @@ export function DocumentPreview({
                                             ? displayRuns.map((run, index) => renderFormattedRun(run, `${paragraph.paragraph_id}-${index}`))
                                             : <br />}
                                     </span>
-                                    {isActive && change && (
-                                        <button
-                                            type="button"
-                                            className="preview-action-btn"
-                                            onClick={(event) => {
-                                                event.stopPropagation();
-                                                onRevertChange(paragraph.paragraph_id);
-                                            }}
-                                        >
-                                            Revert
-                                        </button>
-                                    )}
-                                    {isActive && isSuggested && !change && (
-                                        <span className="preview-selection-badge">Suggestion selected</span>
-                                    )}
                                 </div>
                             );
                         })}

@@ -238,7 +238,6 @@ function App() {
           suggestions={suggestions}
           activeParagraphId={activeParagraphId}
           onSelectParagraph={setActiveParagraphId}
-          onRevertChange={handleRevertChangeByParagraphId}
         />
 
         <Sidebar
