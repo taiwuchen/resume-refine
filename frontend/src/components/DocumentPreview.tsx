@@ -67,6 +67,58 @@ function isBulletToken(value: string): boolean {
     return !cleaned.length;
 }
 
+function shouldInsertTokenSeparator(previousToken: TextToken | null, nextToken: TextToken): boolean {
+    if (!previousToken) {
+        return false;
+    }
+
+    const previousText = previousToken.rawText;
+    const nextText = nextToken.rawText;
+    if (!previousText || !nextText) {
+        return false;
+    }
+
+    if (/\s$/.test(previousText) || /^\s/.test(nextText)) {
+        return false;
+    }
+
+    if (/^[,.;:!?%)\]}]/.test(nextText)) {
+        return false;
+    }
+
+    if (/[([{/]$/.test(previousText)) {
+        return false;
+    }
+
+    if (previousToken.pageIndex !== nextToken.pageIndex) {
+        return true;
+    }
+
+    const previousRect = previousToken.textElement.getBoundingClientRect();
+    const nextRect = nextToken.textElement.getBoundingClientRect();
+    const lineHeight = Math.max(previousRect.height, nextRect.height, 12);
+    const movedToNextLine = Math.abs(nextRect.top - previousRect.top) > lineHeight * 0.6;
+
+    if (movedToNextLine) {
+        return true;
+    }
+
+    const horizontalGap = nextRect.left - previousRect.right;
+    return horizontalGap > Math.max(2, lineHeight * 0.08);
+}
+
+function appendComparableTokenText(
+    currentAggregate: string,
+    previousToken: TextToken | null,
+    nextToken: TextToken,
+): string {
+    if (shouldInsertTokenSeparator(previousToken, nextToken)) {
+        return `${currentAggregate} ${nextToken.rawText}`;
+    }
+
+    return `${currentAggregate}${nextToken.rawText}`;
+}
+
 function buildPreviewParagraphTexts(parsedDocument: ParsedDocument, changes: Change[]): Map<string, string> {
     const changeByParagraphId = new Map(changes.map((change) => [change.paragraph_id, change.replacement]));
 
@@ -86,10 +138,13 @@ function findParagraphMatch(tokens: TextToken[], target: string, startIndex: num
     for (let candidateIndex = startIndex; candidateIndex < tokens.length; candidateIndex += 1) {
         let aggregate = '';
         const tokenIndexes: number[] = [];
+        let previousToken: TextToken | null = null;
 
         for (let tokenIndex = candidateIndex; tokenIndex < tokens.length; tokenIndex += 1) {
-            aggregate += tokens[tokenIndex].rawText;
+            const token = tokens[tokenIndex];
+            aggregate = appendComparableTokenText(aggregate, previousToken, token);
             tokenIndexes.push(tokenIndex);
+            previousToken = token;
 
             const normalizedAggregate = normalizeComparableText(aggregate);
             if (!normalizedAggregate) {
