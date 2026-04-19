@@ -84,6 +84,16 @@
     min-width: 0;
 }
 
+.preview-link {
+    color: #1d4ed8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.preview-link:hover {
+    color: #1e40af;
+}
+
 .preview-interactive {
     cursor: pointer;
 }

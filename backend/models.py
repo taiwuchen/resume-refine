@@ -15,6 +15,8 @@ class ParagraphRun(BaseModel):
     bold: bool = False
     italic: bool = False
     underline: bool = False
+    href: str | None = None
+    is_hyperlink: bool = False
 
 
 class Paragraph(BaseModel):

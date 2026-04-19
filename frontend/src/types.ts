@@ -12,6 +12,8 @@ export interface ParagraphRun {
     bold: boolean;
     italic: boolean;
     underline: boolean;
+    href: string | null;
+    is_hyperlink: boolean;
 }
 
 export interface Paragraph {

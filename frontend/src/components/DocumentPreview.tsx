@@ -24,7 +24,68 @@ function renderFormattedRun(run: ParagraphRun, key: string): ReactNode {
         content = <u>{content}</u>;
     }
 
+    if (run.is_hyperlink && run.href) {
+        content = (
+            <a
+                href={run.href}
+                className="preview-link"
+                target="_blank"
+                rel="noreferrer noopener"
+                onClick={(event) => event.stopPropagation()}
+            >
+                {content}
+            </a>
+        );
+    }
+
     return <span key={key}>{content}</span>;
+}
+
+interface HyperlinkSegment {
+    text: string;
+    href: string;
+    formattingSource: ParagraphRun;
+}
+
+function getHyperlinkSegments(runs: ParagraphRun[]): HyperlinkSegment[] {
+    const segments: HyperlinkSegment[] = [];
+
+    for (const run of runs) {
+        if (!run.is_hyperlink || !run.href || !run.text) {
+            continue;
+        }
+
+        const lastSegment = segments[segments.length - 1];
+        if (lastSegment && lastSegment.href === run.href) {
+            lastSegment.text += run.text;
+            continue;
+        }
+
+        segments.push({
+            text: run.text,
+            href: run.href,
+            formattingSource: run,
+        });
+    }
+
+    return segments;
+}
+
+function createPlainRun(
+    text: string,
+    start: number,
+    formattingSource: ParagraphRun | undefined,
+): ParagraphRun {
+    return {
+        text,
+        start,
+        end: start + text.length,
+        bold: formattingSource?.bold ?? false,
+        italic: formattingSource?.italic ?? false,
+        underline: formattingSource?.underline ?? false,
+        href: null,
+        is_hyperlink: false,
+    };
 }
 
 function buildDisplayRuns(paragraph: Paragraph, change: Change | undefined): ParagraphRun[] {
@@ -32,15 +93,55 @@ function buildDisplayRuns(paragraph: Paragraph, change: Change | undefined): Par
         return paragraph.runs;
     }
 
-    const formattingSource = paragraph.runs[0];
-    return [{
-        text: change.replacement,
-        start: change.start,
-        end: change.end,
-        bold: formattingSource?.bold ?? false,
-        italic: formattingSource?.italic ?? false,
-        underline: formattingSource?.underline ?? false,
-    }];
+    const plainFormattingSource = paragraph.runs.find((run) => !run.is_hyperlink) ?? paragraph.runs[0];
+    const hyperlinkSegments = getHyperlinkSegments(paragraph.runs);
+
+    if (!hyperlinkSegments.length) {
+        return [createPlainRun(change.replacement, change.start, plainFormattingSource)];
+    }
+
+    const displayRuns: ParagraphRun[] = [];
+    let cursor = 0;
+    let absoluteStart = change.start;
+    let hasPreservedHyperlink = false;
+
+    for (const segment of hyperlinkSegments) {
+        const matchIndex = change.replacement.indexOf(segment.text, cursor);
+        if (matchIndex === -1) {
+            continue;
+        }
+
+        if (matchIndex > cursor) {
+            const plainText = change.replacement.slice(cursor, matchIndex);
+            displayRuns.push(createPlainRun(plainText, absoluteStart, plainFormattingSource));
+            absoluteStart += plainText.length;
+        }
+
+        displayRuns.push({
+            text: segment.text,
+            start: absoluteStart,
+            end: absoluteStart + segment.text.length,
+            bold: segment.formattingSource.bold,
+            italic: segment.formattingSource.italic,
+            underline: segment.formattingSource.underline,
+            href: segment.href,
+            is_hyperlink: true,
+        });
+        absoluteStart += segment.text.length;
+        cursor = matchIndex + segment.text.length;
+        hasPreservedHyperlink = true;
+    }
+
+    if (cursor < change.replacement.length) {
+        const trailingText = change.replacement.slice(cursor);
+        displayRuns.push(createPlainRun(trailingText, absoluteStart, plainFormattingSource));
+    }
+
+    if (!hasPreservedHyperlink) {
+        return [createPlainRun(change.replacement, change.start, plainFormattingSource)];
+    }
+
+    return displayRuns;
 }
 
 export function DocumentPreview({
