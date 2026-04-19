@@ -38,7 +38,7 @@ async def get_document_preview_pdf(doc_id: str, request: PreviewPdfRequest):
     except ValueError as error:
         raise HTTPException(400, f"Invalid preview change set: {error}")
     except RuntimeError as error:
-        raise HTTPException(501, str(error))
+        raise HTTPException(503, str(error))
     except Exception as error:
         raise HTTPException(500, f"Failed to generate PDF preview: {error}")
 

@@ -17,6 +17,7 @@ An interactive, Grammarly-style resume refinement webapp that helps optimize you
 - Node.js 20+ or 22+
 - Python 3.9+
 - OpenRouter API key
+- Docker, or access to a running Gotenberg service
 
 ### Setup
 
@@ -27,13 +28,19 @@ An interactive, Grammarly-style resume refinement webapp that helps optimize you
    # Add your OPENROUTER_API_KEY to .env
    ```
 
-3. Install backend dependencies:
+3. Start Gotenberg for DOCX to PDF preview generation:
+   ```bash
+   docker run --rm -p 3001:3000 gotenberg/gotenberg:8
+   ```
+   If you are using a remote renderer instead, point `GOTENBERG_URL` in `.env` to that service.
+
+4. Install backend dependencies:
    ```bash
    cd backend
    pip install -r requirements.txt
    ```
 
-4. Install frontend dependencies:
+5. Install frontend dependencies:
    ```bash
    cd frontend
    npm install
@@ -55,6 +62,8 @@ npm run dev
 
 Open http://localhost:5173 in your browser.
 
+If preview rendering fails, verify that the service at `GOTENBERG_URL` is reachable and that it has the fonts your resume needs. Missing fonts are the main cause of preview layout drift.
+
 ## Usage
 
 1. Upload a DOCX resume
@@ -71,3 +80,4 @@ Open http://localhost:5173 in your browser.
 - **Backend**: FastAPI (Python)
 - **AI**: OpenRouter (OpenAI-compatible API)
 - **Document**: python-docx for DOCX parsing/export
+- **Preview Rendering**: Gotenberg (LibreOffice)
