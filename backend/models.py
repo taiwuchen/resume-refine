@@ -82,6 +82,10 @@ class ExportRequest(BaseModel):
     changes: list[Change]
 
 
+class PreviewPdfRequest(BaseModel):
+    changes: list[Change]
+
+
 class ChatMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
