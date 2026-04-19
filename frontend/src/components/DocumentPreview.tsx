@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { Change, Paragraph, ParagraphRun, ParsedDocument, Suggestion } from '../types';
 import './DocumentPreview.css';
@@ -6,7 +7,9 @@ interface DocumentPreviewProps {
     document: ParsedDocument | null;
     changes: Change[];
     suggestions: Suggestion[];
-    onRevertChange: (index: number) => void;
+    activeParagraphId: string | null;
+    onSelectParagraph: (paragraphId: string | null) => void;
+    onRevertChange: (paragraphId: string) => void;
 }
 
 function renderFormattedRun(run: ParagraphRun, key: string): ReactNode {
@@ -45,18 +48,29 @@ export function DocumentPreview({
     document,
     changes,
     suggestions,
+    activeParagraphId,
+    onSelectParagraph,
     onRevertChange,
 }: DocumentPreviewProps) {
-    const changeIndexByParagraphId = new Map<string, number>(
-        changes.map((change, index) => [change.paragraph_id, index])
+    const paragraphRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const changeByParagraphId = new Map<string, Change>(
+        changes.map((change) => [change.paragraph_id, change])
     );
     const suggestionIds = new Set(suggestions.map((suggestion) => suggestion.paragraph_id));
+
+    useEffect(() => {
+        if (!activeParagraphId) return;
+        paragraphRefs.current[activeParagraphId]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+        });
+    }, [activeParagraphId]);
 
     return (
         <div className="document-preview">
             <div className="preview-header">
                 <span className="preview-title">Document Preview</span>
-                <span className="preview-hint">Click highlighted text to revert</span>
+                <span className="preview-hint">Select highlighted text to sync with suggestions</span>
             </div>
             <div className="preview-container">
                 {!document && (
@@ -67,14 +81,17 @@ export function DocumentPreview({
                 {document && (
                     <div className="structured-content">
                         {document.paragraphs.map((paragraph) => {
-                            const changeIndex = changeIndexByParagraphId.get(paragraph.paragraph_id);
-                            const change = changeIndex !== undefined ? changes[changeIndex] : undefined;
-                            const isSuggested = suggestionIds.has(paragraph.paragraph_id) && changeIndex === undefined;
+                            const change = changeByParagraphId.get(paragraph.paragraph_id);
+                            const isSuggested = suggestionIds.has(paragraph.paragraph_id) && !change;
+                            const isInteractive = isSuggested || !!change;
+                            const isActive = activeParagraphId === paragraph.paragraph_id;
                             const paragraphClassName = [
                                 'preview-paragraph',
                                 paragraph.is_list_item ? 'preview-list-item' : '',
                                 isSuggested ? 'suggestion-pending' : '',
                                 change ? 'change-applied' : '',
+                                isInteractive ? 'preview-interactive' : '',
+                                isActive ? 'preview-selected' : '',
                             ].filter(Boolean).join(' ');
                             const displayRuns = buildDisplayRuns(paragraph, change);
                             const listIndent = `${paragraph.list_level * 20}px`;
@@ -85,15 +102,18 @@ export function DocumentPreview({
                             return (
                                 <div
                                     key={paragraph.paragraph_id}
+                                    ref={(node) => {
+                                        paragraphRefs.current[paragraph.paragraph_id] = node;
+                                    }}
                                     data-paragraph-id={paragraph.paragraph_id}
                                     className={paragraphClassName}
                                     onClick={() => {
-                                        if (changeIndex !== undefined) {
-                                            onRevertChange(changeIndex);
+                                        if (isInteractive) {
+                                            onSelectParagraph(paragraph.paragraph_id);
                                         }
                                     }}
                                     style={paragraphStyle}
-                                    title={change ? 'Click to revert' : undefined}
+                                    title={isInteractive ? 'Click to focus this suggestion' : undefined}
                                 >
                                     {paragraph.is_list_item && (
                                         <span className="preview-bullet" aria-hidden="true">•</span>
@@ -103,6 +123,21 @@ export function DocumentPreview({
                                             ? displayRuns.map((run, index) => renderFormattedRun(run, `${paragraph.paragraph_id}-${index}`))
                                             : <br />}
                                     </span>
+                                    {isActive && change && (
+                                        <button
+                                            type="button"
+                                            className="preview-action-btn"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                onRevertChange(paragraph.paragraph_id);
+                                            }}
+                                        >
+                                            Revert
+                                        </button>
+                                    )}
+                                    {isActive && isSuggested && !change && (
+                                        <span className="preview-selection-badge">Suggestion selected</span>
+                                    )}
                                 </div>
                             );
                         })}

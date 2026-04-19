@@ -4,7 +4,7 @@ import { DocumentPreview } from './components/DocumentPreview';
 import { Sidebar } from './components/Sidebar';
 import type { ParsedDocument, Suggestion, Change, ChatMessage, ChatEdit } from './types';
 import { uploadResume, analyzeResume, getSuggestions, exportResume, sendChatMessage } from './hooks/useApi';
-import { getVisibleSuggestions, removeChangeAtIndex, upsertParagraphChange } from './utils/changeState';
+import { removeChangeByParagraphId, upsertParagraphChange } from './utils/changeState';
 import './App.css';
 
 function App() {
@@ -13,6 +13,7 @@ function App() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [changes, setChanges] = useState<Change[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [activeParagraphId, setActiveParagraphId] = useState<string | null>(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -25,6 +26,7 @@ function App() {
       setSuggestions([]);
       setChanges([]);
       setChatMessages([]);
+      setActiveParagraphId(null);
     } catch (error) {
       console.error('Upload failed:', error);
       alert(error instanceof Error ? error.message : 'Upload failed');
@@ -38,6 +40,7 @@ function App() {
     try {
       const newSuggestions = await analyzeResume(document.doc_id, jobDescription);
       setSuggestions(newSuggestions);
+      setActiveParagraphId(newSuggestions[0]?.paragraph_id ?? null);
     } catch (error) {
       console.error('Analysis failed:', error);
       alert(error instanceof Error ? error.message : 'Analysis failed');
@@ -75,14 +78,23 @@ function App() {
       replacement,
     };
     setChanges((prev) => upsertParagraphChange(prev, change));
+    setActiveParagraphId(suggestion.paragraph_id);
   };
 
   const handleDismissSuggestion = (suggestionId: string) => {
-    setSuggestions((prev) => prev.filter((suggestion) => suggestion.id !== suggestionId));
+    setSuggestions((prev) => {
+      const nextSuggestions = prev.filter((suggestion) => suggestion.id !== suggestionId);
+      const removedSuggestion = prev.find((suggestion) => suggestion.id === suggestionId);
+      if (removedSuggestion?.paragraph_id === activeParagraphId) {
+        setActiveParagraphId(nextSuggestions[0]?.paragraph_id ?? null);
+      }
+      return nextSuggestions;
+    });
   };
 
-  const handleRevertChange = (index: number) => {
-    setChanges((prev) => removeChangeAtIndex(prev, index));
+  const handleRevertChangeByParagraphId = (paragraphId: string) => {
+    setChanges((prev) => removeChangeByParagraphId(prev, paragraphId));
+    setActiveParagraphId(paragraphId);
   };
 
   const handleRefreshSuggestion = async (suggestion: Suggestion) => {
@@ -100,6 +112,7 @@ function App() {
       setSuggestions((prev) => prev.map((currentSuggestion) => (
         currentSuggestion.id === suggestion.id ? newSuggestion : currentSuggestion
       )));
+      setActiveParagraphId(suggestion.paragraph_id);
     } catch (error) {
       console.error('Refresh failed:', error);
     }
@@ -166,6 +179,7 @@ function App() {
     };
 
     setChanges((prev) => upsertParagraphChange(prev, change));
+    setActiveParagraphId(edit.paragraph_id);
 
     setChatMessages((prev) =>
       prev.map((msg) => ({
@@ -191,11 +205,18 @@ function App() {
       })
     );
   };
-
-  const visibleSuggestions = useMemo(
-    () => getVisibleSuggestions(suggestions, changes),
-    [changes, suggestions]
-  );
+  
+  const sortedSuggestions = useMemo(() => {
+    const changedParagraphIds = new Set(changes.map((change) => change.paragraph_id));
+    return [...suggestions].sort((left, right) => {
+      const leftApplied = changedParagraphIds.has(left.paragraph_id);
+      const rightApplied = changedParagraphIds.has(right.paragraph_id);
+      if (leftApplied !== rightApplied) {
+        return leftApplied ? 1 : -1;
+      }
+      return left.paragraph_id.localeCompare(right.paragraph_id);
+    });
+  }, [changes, suggestions]);
 
   return (
     <div className="app">
@@ -215,14 +236,20 @@ function App() {
           document={document}
           changes={changes}
           suggestions={suggestions}
-          onRevertChange={handleRevertChange}
+          activeParagraphId={activeParagraphId}
+          onSelectParagraph={setActiveParagraphId}
+          onRevertChange={handleRevertChangeByParagraphId}
         />
 
         <Sidebar
-          suggestions={visibleSuggestions}
+          suggestions={sortedSuggestions}
+          changes={changes}
+          activeParagraphId={activeParagraphId}
           onAcceptSuggestion={handleAcceptSuggestion}
           onDismissSuggestion={handleDismissSuggestion}
           onRefreshSuggestion={handleRefreshSuggestion}
+          onSelectSuggestion={setActiveParagraphId}
+          onRevertSuggestion={handleRevertChangeByParagraphId}
           isAnalyzing={isAnalyzing}
           chatMessages={chatMessages}
           onSendMessage={handleSendMessage}

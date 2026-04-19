@@ -20,6 +20,9 @@ export function removeChangeAtIndex(changes: Change[], indexToRemove: number): C
     return changes.filter((_, index) => index !== indexToRemove);
 }
 
+export function removeChangeByParagraphId(changes: Change[], paragraphId: string): Change[] {
+    return changes.filter((change) => change.paragraph_id !== paragraphId);
+}
 
 export function getVisibleSuggestions(
     suggestions: Suggestion[],
