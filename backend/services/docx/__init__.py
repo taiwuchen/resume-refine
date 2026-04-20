@@ -1,0 +1,1 @@
+"""Shared DOCX manipulation helpers."""

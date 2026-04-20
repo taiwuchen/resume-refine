@@ -3,7 +3,7 @@ from fastapi.responses import FileResponse
 
 import storage
 from models import PreviewPdfRequest
-from services.pdf_preview import create_preview_pdf
+from services.preview.pipeline import create_preview_pdf
 
 router = APIRouter()
 

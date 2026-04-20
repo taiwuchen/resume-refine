@@ -7,6 +7,12 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from models import Change, ParsedDocument
+from services.docx.xml_utils import (
+    clone_run_properties,
+    extract_text,
+    is_hyperlink,
+    is_run,
+)
 
 
 @dataclass(frozen=True)
@@ -54,26 +60,6 @@ def apply_changes_to_docx(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     docx.save(output_path)
     return output_path
-
-
-def _extract_text(element) -> str:
-    return "".join(node.text or "" for node in element.xpath(".//w:t"))
-
-
-def _is_hyperlink(element) -> bool:
-    return element.tag == qn("w:hyperlink")
-
-
-def _is_run(element) -> bool:
-    return element.tag == qn("w:r")
-
-
-def _clone_run_properties(source_run_element, target_run_element) -> None:
-    source_properties = source_run_element.find(qn("w:rPr"))
-    if source_properties is not None:
-        target_run_element.append(deepcopy(source_properties))
-
-
 def _append_text_children(run_element, text: str) -> None:
     parts = text.split("\t")
 
@@ -102,25 +88,25 @@ def _append_text_children(run_element, text: str) -> None:
 def _build_plain_run(text: str, style_source) -> object:
     run_element = OxmlElement("w:r")
     if style_source is not None:
-        _clone_run_properties(style_source, run_element)
+        clone_run_properties(style_source, run_element)
     _append_text_children(run_element, text)
     return run_element
 
 
 def _get_representative_run(paragraph) -> object | None:
     for child in paragraph._p:
-        if _is_run(child) and _extract_text(child):
+        if is_run(child) and extract_text(child):
             return child
-        if _is_hyperlink(child):
+        if is_hyperlink(child):
             for hyperlink_child in child:
-                if _is_run(hyperlink_child) and _extract_text(hyperlink_child):
+                if is_run(hyperlink_child) and extract_text(hyperlink_child):
                     return hyperlink_child
     return None
 
 
 def _get_plain_style_source(paragraph) -> object | None:
     for child in paragraph._p:
-        if _is_run(child) and _extract_text(child):
+        if is_run(child) and extract_text(child):
             return child
     return _get_representative_run(paragraph)
 
@@ -129,10 +115,10 @@ def _get_hyperlink_sources(paragraph) -> list[HyperlinkSource]:
     sources: list[HyperlinkSource] = []
 
     for child in paragraph._p:
-        if not _is_hyperlink(child):
+        if not is_hyperlink(child):
             continue
 
-        text = _extract_text(child)
+        text = extract_text(child)
         if text:
             sources.append(HyperlinkSource(text=text, element=child))
 
