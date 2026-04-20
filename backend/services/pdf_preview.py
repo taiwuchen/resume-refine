@@ -1,4 +1,5 @@
 from pathlib import Path
+from shutil import copyfile
 
 import requests
 
@@ -10,6 +11,7 @@ from config import (
 )
 from models import Change, ParsedDocument
 from services.exporter import apply_changes_to_docx
+from services.preview_normalizer import normalize_preview_docx
 
 DOCX_MEDIA_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 PDF_CONVERT_ROUTE = "/forms/libreoffice/convert"
@@ -22,11 +24,14 @@ def create_preview_pdf(
     *,
     doc_id: str,
 ) -> Path:
-    source_docx_path = original_path
+    source_docx_path = TMP_PDF_DIR / f"{doc_id}_preview.docx"
 
     if changes:
-        source_docx_path = TMP_PDF_DIR / f"{doc_id}_preview.docx"
         apply_changes_to_docx(original_path, doc, changes, source_docx_path)
+    else:
+        copyfile(original_path, source_docx_path)
+
+    normalize_preview_docx(source_docx_path)
 
     output_pdf_path = OUTPUT_PDF_DIR / f"{doc_id}_preview.pdf"
     convert_docx_to_pdf(source_docx_path, output_pdf_path)
