@@ -5,7 +5,7 @@ from docx import Document
 from docx.text.hyperlink import Hyperlink
 from docx.text.run import Run
 
-from models import ParsedDocument, Paragraph, ParagraphRun, PositionMapping
+from models.document import Paragraph, ParagraphRun, ParsedDocument, PositionMapping
 
 
 def _is_list_paragraph(paragraph) -> tuple[bool, int]:

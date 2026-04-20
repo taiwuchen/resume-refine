@@ -2,7 +2,7 @@ from pathlib import Path
 from shutil import copyfile
 
 from config import OUTPUT_PDF_DIR, TMP_PDF_DIR
-from models import Change, ParsedDocument
+from models.document import Change, ParsedDocument
 from services.exporter import apply_changes_to_docx
 from services.preview.normalizers.registry import normalize_preview_docx
 from services.preview.renderers.gotenberg import GotenbergPreviewRenderer

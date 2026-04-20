@@ -1,14 +1,14 @@
 from fastapi import APIRouter, HTTPException
-from models import ChatRequest, ChatResponse
-from services.chat import handle_chat
-import storage
+from models.ai import ChatRequest, ChatResponse
+from repositories.document_repository import document_repository
+from services.ai.chat import handle_chat
 
 router = APIRouter()
 
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    doc = storage.get_document(request.doc_id)
+    doc = document_repository.get_document(request.doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Document not found")
 

@@ -2,9 +2,9 @@ from pathlib import Path
 from fastapi import APIRouter, UploadFile, HTTPException
 
 from config import UPLOAD_DIR
-from models import ParsedDocument
+from models.document import ParsedDocument
+from repositories.document_repository import document_repository
 from services.parser import parse_docx
-import storage
 
 router = APIRouter()
 
@@ -26,6 +26,6 @@ async def upload_resume(file: UploadFile):
         file_path.unlink(missing_ok=True)
         raise HTTPException(400, f"Failed to parse DOCX: {e}")
     
-    storage.store_document(doc, file_path)
+    document_repository.store_document(doc, file_path)
     
     return doc

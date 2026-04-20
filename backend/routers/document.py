@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-import storage
-from models import PreviewPdfRequest
+from models.preview import PreviewPdfRequest
+from repositories.document_repository import document_repository
 from services.preview.pipeline import create_preview_pdf
 
 router = APIRouter()
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.get("/document/{doc_id}")
 async def get_document(doc_id: str):
     """Serve the raw DOCX file for preview."""
-    file_path = storage.get_file_path(doc_id)
+    file_path = document_repository.get_file_path(doc_id)
     if not file_path or not file_path.exists():
         raise HTTPException(404, "Document not found")
     
@@ -25,11 +25,11 @@ async def get_document(doc_id: str):
 @router.post("/document/{doc_id}/preview-pdf")
 async def get_document_preview_pdf(doc_id: str, request: PreviewPdfRequest):
     """Serve a PDF preview of the current document state."""
-    doc = storage.get_document(doc_id)
+    doc = document_repository.get_document(doc_id)
     if not doc:
         raise HTTPException(404, "Document not found")
 
-    original_path = storage.get_file_path(doc_id)
+    original_path = document_repository.get_file_path(doc_id)
     if not original_path or not original_path.exists():
         raise HTTPException(404, "Original file not found")
 

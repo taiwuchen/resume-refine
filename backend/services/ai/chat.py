@@ -1,8 +1,10 @@
 import json
 import re
-from models import ChatMessage, ChatResponse, ChatEdit, ParsedDocument
+
+from models.ai import ChatEdit, ChatMessage, ChatResponse
+from models.document import ParsedDocument
 from prompts import CHAT_SYSTEM_PROMPT, build_chat_context_prompt
-from services.llm import call_llm
+from services.ai.llm import call_llm
 from services.document_utils import build_paragraph_catalog, get_editable_paragraphs, get_paragraph_or_none
 
 
@@ -11,7 +13,6 @@ def handle_chat(
     job_description: str,
     messages: list[ChatMessage],
 ) -> ChatResponse:
-    # Build system message with context
     editable_paragraphs = get_editable_paragraphs(doc)
     context = build_chat_context_prompt(
         doc.full_text,
@@ -20,37 +21,27 @@ def handle_chat(
     )
     system_content = f"{CHAT_SYSTEM_PROMPT}\n\n{context}"
 
-    # Convert to LLM message format
     llm_messages = [{"role": "system", "content": system_content}]
     for msg in messages:
         llm_messages.append({"role": msg.role, "content": msg.content})
 
-    # Call LLM
     raw_response = call_llm(llm_messages)
-
-    # Parse response
     return parse_chat_response(raw_response, doc)
 
 
 def parse_chat_response(raw: str, doc: ParsedDocument) -> ChatResponse:
-    # Try to extract JSON from response
     try:
-        # Try direct JSON parse
         data = json.loads(raw)
     except json.JSONDecodeError:
-        # Try to extract JSON from markdown code block
         match = re.search(r"```(?:json)?\s*([\s\S]*?)```", raw)
         if match:
             try:
                 data = json.loads(match.group(1).strip())
             except json.JSONDecodeError:
-                # Return raw as message with no edits
                 return ChatResponse(message=raw, edits=[])
         else:
-            # Return raw as message with no edits
             return ChatResponse(message=raw, edits=[])
 
-    # Extract message and edits
     message = data.get("message", "")
     edits_data = data.get("edits", [])
 

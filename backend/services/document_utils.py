@@ -1,4 +1,4 @@
-from models import ParsedDocument, Paragraph
+from models.document import Paragraph, ParsedDocument
 
 
 def get_paragraph_map(doc: ParsedDocument) -> dict[str, Paragraph]:

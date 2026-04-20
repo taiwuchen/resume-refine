@@ -6,7 +6,7 @@ from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
-from models import Change, ParsedDocument
+from models.document import Change, ParsedDocument
 from services.docx.xml_utils import (
     clone_run_properties,
     extract_text,

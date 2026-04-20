@@ -1,16 +1,16 @@
 from fastapi import APIRouter, HTTPException
 
-from models import SuggestRequest, SuggestResponse
+from models.ai import SuggestRequest, SuggestResponse
+from repositories.document_repository import document_repository
 from services.document_utils import validate_paragraph_selection
-from services.suggester import generate_suggestions
-import storage
+from services.ai.suggester import generate_suggestions
 
 router = APIRouter()
 
 
 @router.post("/suggest", response_model=SuggestResponse)
 async def suggest(request: SuggestRequest):
-    doc = storage.get_document(request.doc_id)
+    doc = document_repository.get_document(request.doc_id)
     if not doc:
         raise HTTPException(404, "Document not found")
     
