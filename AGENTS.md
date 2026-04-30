@@ -20,6 +20,8 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 - Chat-generated edits must become structured suggestions or confirmed edits.
 - Resume edits make previous analysis stale for the new version.
 - Readiness should combine deterministic checks with LLM-generated advice.
+- Chat should not recommend rewriting an already accepted/changed paragraph unless the user explicitly asks for another revision.
+- **Ask about this** should create visible chat context or immediately ask a starter question so users can see what was carried over.
 
 ### Core Data Concepts
 
@@ -46,6 +48,7 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 - [ ] Persist accepted and dismissed suggestion states.
 - [x] Mark analysis stale when resume text changes.
 - [ ] Include prior accepted and dismissed decisions in future analysis context.
+- [ ] Include accepted and changed paragraph state in chat context as decision constraints.
 - [ ] Add deterministic readiness checks.
 - [ ] Merge deterministic readiness checks with LLM suggestions.
 - [x] Update analyzer prompt to return structured categories, severity, reason, and issue keys.
@@ -63,6 +66,9 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 - [x] Group suggestions by severity.
 - [x] Add **Ask about this** to suggestion cards.
 - [x] Switch to chat tab with active suggestion context.
+- [ ] Show a visible suggestion context card or quote when **Ask about this** opens chat.
+- [ ] Auto-send or prefill a starter prompt such as "Why is this suggested?" after **Ask about this**.
+- [ ] Replace **Ask about this** with **Review applied edit** for accepted suggestions.
 - [x] Show **Already analyzed this version** when cached analysis is reused.
 - [x] Add **Generate another pass** as an explicit secondary action.
 - [x] Show **Resume changed since last analysis** after edits.
@@ -77,6 +83,7 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 - [x] Add severity levels: critical, recommended, optional.
 - [x] Ask for stable `issue_key` values.
 - [ ] Include previous accepted and dismissed suggestions during new-pass analysis.
+- [ ] Instruct chat not to propose edits for accepted/changed paragraphs unless the user explicitly asks to revise them.
 - [x] Instruct chat not to claim edits were applied unless the app confirms them.
 - [x] Instruct chat to return structured edit drafts when the user asks for resume changes.
 
@@ -89,6 +96,8 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 - [x] Applying a suggestion marks the prior analysis stale.
 - [ ] Dismissed suggestions are not repeated blindly in a new pass.
 - [x] Chat can explain an active suggestion.
+- [ ] **Ask about this** visibly quotes or cards the active suggestion in chat.
+- [ ] Chat does not recommend rewriting accepted/changed bullets unless explicitly requested.
 - [ ] Chat can generate a structured rewrite draft.
 - [x] Chat-generated rewrites can become suggestions.
 - [x] Applying a chat-generated rewrite updates resume version state.
@@ -101,10 +110,12 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 3. Add stale-analysis UX after applying changes.
 4. Connect chat to the active suggestion.
 5. Add chat-generated suggestion drafts.
-6. Add resume versioning as the durable source of truth for edits.
-7. Add deterministic readiness scoring.
-8. Add support for explicit new analysis passes.
-9. Add tests around repeated analysis, stale analysis, and chat-to-suggestion flows.
+6. Make **Ask about this** visibly carry suggestion context into chat.
+7. Suppress repeated chat rewrite recommendations for accepted/changed bullets unless explicitly requested.
+8. Add resume versioning as the durable source of truth for edits.
+9. Add deterministic readiness scoring.
+10. Add support for explicit new analysis passes.
+11. Add tests around repeated analysis, stale analysis, and chat-to-suggestion flows.
 
 ### Open Decisions
 
@@ -113,3 +124,5 @@ Target product state: **Ready to apply for this job**, not "perfect resume".
 - Should **Generate another pass** replace the active analysis or show multiple passes side by side?
 - How strict should `issue_key` stability be across edited paragraphs?
 - Should readiness score be hidden until deterministic checks exist, or introduced with LLM-only scoring first?
+- Should **Ask about this** immediately send "Why is this suggested?" or only prefill the chat input?
+- Should accepted suggestions allow casual follow-up questions while blocking rewrite-style recommendations by default?

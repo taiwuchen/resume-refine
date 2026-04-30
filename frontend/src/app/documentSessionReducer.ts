@@ -66,6 +66,45 @@ export const initialDocumentSessionState: DocumentSessionState = {
     isChatLoading: false,
 };
 
+function sortSuggestionsByDocumentLocation(
+    suggestions: Suggestion[],
+    document: ParsedDocument | null,
+): Suggestion[] {
+    const paragraphOrder = new Map(
+        document?.paragraphs.map((paragraph, index) => [
+            paragraph.paragraph_id,
+            { index, start: paragraph.start, end: paragraph.end },
+        ]) ?? []
+    );
+
+    return suggestions
+        .map((suggestion, originalIndex) => ({ suggestion, originalIndex }))
+        .sort((a, b) => {
+            const aLocation = paragraphOrder.get(a.suggestion.paragraph_id);
+            const bLocation = paragraphOrder.get(b.suggestion.paragraph_id);
+
+            if (!aLocation && !bLocation) {
+                return a.originalIndex - b.originalIndex;
+            }
+
+            if (!aLocation) {
+                return -1;
+            }
+
+            if (!bLocation) {
+                return 1;
+            }
+
+            return (
+                aLocation.index - bLocation.index
+                || a.suggestion.start - b.suggestion.start
+                || a.suggestion.end - b.suggestion.end
+                || a.originalIndex - b.originalIndex
+            );
+        })
+        .map(({ suggestion }) => suggestion);
+}
+
 export function documentSessionReducer(
     state: DocumentSessionState,
     action: DocumentSessionAction,
@@ -100,19 +139,21 @@ export function documentSessionReducer(
                 ...state,
                 isAnalyzing: true,
             };
-        case 'analyzeSuccess':
+        case 'analyzeSuccess': {
+            const nextSuggestions = sortSuggestionsByDocumentLocation(action.suggestions, state.document);
             return {
                 ...state,
-                suggestions: action.suggestions,
+                suggestions: nextSuggestions,
                 activeAnalysisId: action.analysisId,
                 resumeVersionId: action.resumeVersionId,
                 readinessScore: action.readinessScore,
                 analysisCacheHit: action.cacheHit,
                 isAnalysisStale: false,
-                activeParagraphId: action.suggestions[0]?.paragraph_id ?? null,
-                activeSuggestionId: action.suggestions[0]?.id ?? null,
+                activeParagraphId: nextSuggestions[0]?.paragraph_id ?? null,
+                activeSuggestionId: nextSuggestions[0]?.id ?? null,
                 isAnalyzing: false,
             };
+        }
         case 'analyzeFailure':
             return {
                 ...state,
@@ -190,7 +231,7 @@ export function documentSessionReducer(
 
             return {
                 ...state,
-                suggestions: [...state.suggestions, nextSuggestion],
+                suggestions: sortSuggestionsByDocumentLocation([...state.suggestions, nextSuggestion], state.document),
                 activeParagraphId: nextSuggestion.paragraph_id,
                 activeSuggestionId: nextSuggestion.id,
             };

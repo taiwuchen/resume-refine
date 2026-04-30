@@ -21,6 +21,10 @@ function scrollChildIntoContainer(container: HTMLElement, child: HTMLElement) {
     });
 }
 
+function formatSuggestionLabel(value: string) {
+    return value.replace(/_/g, ' ');
+}
+
 interface SidebarProps {
     activeTab: 'suggestions' | 'chat';
     suggestions: Suggestion[];
@@ -90,15 +94,6 @@ export function Sidebar({
         () => suggestions.filter((suggestion) => suggestion.state === 'open' && !changedParagraphIds.has(suggestion.paragraph_id)).length,
         [changedParagraphIds, suggestions]
     );
-    const groupedSuggestions = useMemo(() => {
-        const severityOrder: Suggestion['severity'][] = ['critical', 'recommended', 'optional'];
-        return severityOrder
-            .map((severity) => ({
-                severity,
-                suggestions: suggestions.filter((suggestion) => suggestion.severity === severity),
-            }))
-            .filter((group) => group.suggestions.length > 0);
-    }, [suggestions]);
 
     useEffect(() => {
         if (activeTab !== 'chat') return;
@@ -200,105 +195,105 @@ export function Sidebar({
 
                         {!isAnalyzing && suggestions.length > 0 && (
                             <div className="suggestions-list" ref={suggestionsListRef}>
-                                {groupedSuggestions.map((group) => (
-                                    <div key={group.severity} className="suggestion-group">
-                                        <div className="suggestion-group-title">{group.severity}</div>
-                                        {group.suggestions.map((suggestion) => {
-                                            const suggestionState = changedParagraphIds.has(suggestion.paragraph_id)
-                                                ? 'applied'
-                                                : suggestion.state;
+                                {suggestions.map((suggestion) => {
+                                    const suggestionState = changedParagraphIds.has(suggestion.paragraph_id)
+                                        ? 'applied'
+                                        : suggestion.state;
 
-                                            return (
-                                                <div
-                                                    key={suggestion.id}
-                                                    ref={(node) => {
-                                                        suggestionCardRefs.current[suggestion.id] = node;
-                                                    }}
-                                                    className={`suggestion-card ${visibleExpandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${suggestionState}`}
-                                                >
+                                    return (
                                         <div
-                                            className="suggestion-header"
-                                            onClick={() => {
-                                                onActiveTabChange('suggestions');
-                                                onSelectSuggestion(suggestion.paragraph_id);
-                                                setExpandedId(visibleExpandedId === suggestion.id ? null : suggestion.id);
+                                            key={suggestion.id}
+                                            ref={(node) => {
+                                                suggestionCardRefs.current[suggestion.id] = node;
                                             }}
+                                            className={`suggestion-card ${visibleExpandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${suggestionState}`}
                                         >
-                                            <div className="suggestion-summary">
-                                                <div className={`suggestion-status ${suggestionState}`}>
-                                                    {suggestionState}
-                                                </div>
-                                                <p className="original-text">{suggestion.original_text}</p>
-                                                {suggestion.reason && (
-                                                    <p className="suggestion-reason">{suggestion.reason}</p>
-                                                )}
-                                            </div>
-                                            <span className="expand-icon">{visibleExpandedId === suggestion.id ? '▲' : '▼'}</span>
-                                        </div>
-
-                                        {visibleExpandedId === suggestion.id && (
-                                            <div className="suggestion-options">
-                                            <div className="options-header">
-                                                <span>Alternatives</span>
-                                                <div className="option-actions">
-                                                    <button
-                                                        className="action-btn refresh"
-                                                        onClick={() => onRefreshSuggestion(suggestion)}
-                                                        title="Refresh"
-                                                        disabled={suggestion.state === 'dismissed'}
-                                                    >
-                                                        ↻
-                                                    </button>
-                                                    <button
-                                                        className="ask-suggestion-btn"
-                                                        onClick={() => onAskSuggestion(suggestion)}
-                                                    >
-                                                        Ask about this
-                                                    </button>
-                                                    {!changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                        <button
-                                                            className="action-btn dismiss"
-                                                            onClick={() => onDismissSuggestion(suggestion.id)}
-                                                            title="Dismiss"
-                                                            disabled={suggestion.state === 'dismissed'}
-                                                        >
-                                                            ×
-                                                        </button>
+                                            <div
+                                                className="suggestion-header"
+                                                onClick={() => {
+                                                    onActiveTabChange('suggestions');
+                                                    onSelectSuggestion(suggestion.paragraph_id);
+                                                    setExpandedId(visibleExpandedId === suggestion.id ? null : suggestion.id);
+                                                }}
+                                            >
+                                                <div className="suggestion-summary">
+                                                    <div className="suggestion-badges">
+                                                        <span className={`suggestion-status ${suggestionState}`}>
+                                                            {formatSuggestionLabel(suggestionState)}
+                                                        </span>
+                                                        <span className={`suggestion-severity ${suggestion.severity}`}>
+                                                            {formatSuggestionLabel(suggestion.severity)}
+                                                        </span>
+                                                    </div>
+                                                    <p className="original-text">{suggestion.original_text}</p>
+                                                    {suggestion.reason && (
+                                                        <p className="suggestion-reason">{suggestion.reason}</p>
                                                     )}
                                                 </div>
+                                                <span className="expand-icon">{visibleExpandedId === suggestion.id ? '▲' : '▼'}</span>
                                             </div>
 
-                                            {changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                <div className="applied-note">
-                                                    <span>This suggestion is currently applied in the document.</span>
-                                                    <button
-                                                        type="button"
-                                                        className="applied-note-revert"
-                                                        onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
-                                                    >
-                                                        Revert
-                                                    </button>
+                                            {visibleExpandedId === suggestion.id && (
+                                                <div className="suggestion-options">
+                                                    <div className="options-header">
+                                                        <span>Alternatives</span>
+                                                        <div className="option-actions">
+                                                            <button
+                                                                className="action-btn refresh"
+                                                                onClick={() => onRefreshSuggestion(suggestion)}
+                                                                title="Refresh"
+                                                                disabled={suggestion.state === 'dismissed'}
+                                                            >
+                                                                ↻
+                                                            </button>
+                                                            <button
+                                                                className="ask-suggestion-btn"
+                                                                onClick={() => onAskSuggestion(suggestion)}
+                                                            >
+                                                                Ask about this
+                                                            </button>
+                                                            {!changedParagraphIds.has(suggestion.paragraph_id) && (
+                                                                <button
+                                                                    className="action-btn dismiss"
+                                                                    onClick={() => onDismissSuggestion(suggestion.id)}
+                                                                    title="Dismiss"
+                                                                    disabled={suggestion.state === 'dismissed'}
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {changedParagraphIds.has(suggestion.paragraph_id) && (
+                                                        <div className="applied-note">
+                                                            <span>This suggestion is currently applied in the document.</span>
+                                                            <button
+                                                                type="button"
+                                                                className="applied-note-revert"
+                                                                onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
+                                                            >
+                                                                Revert
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                    {suggestion.alternatives.map((alt, idx) => (
+                                                        <button
+                                                            key={idx}
+                                                            className="alternative-btn"
+                                                            onClick={() => onAcceptSuggestion(suggestion, alt)}
+                                                            disabled={suggestion.state === 'dismissed'}
+                                                        >
+                                                            <span className="alt-number">{idx + 1}</span>
+                                                            <span className="alt-text">{alt}</span>
+                                                        </button>
+                                                    ))}
                                                 </div>
                                             )}
-
-                                                {suggestion.alternatives.map((alt, idx) => (
-                                                    <button
-                                                        key={idx}
-                                                        className="alternative-btn"
-                                                        onClick={() => onAcceptSuggestion(suggestion, alt)}
-                                                        disabled={suggestion.state === 'dismissed'}
-                                                    >
-                                                        <span className="alt-number">{idx + 1}</span>
-                                                        <span className="alt-text">{alt}</span>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                ))}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
