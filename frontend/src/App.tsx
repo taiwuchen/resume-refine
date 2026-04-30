@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Header } from './components/Header';
-import { DocumentPreview } from './components/DocumentPreview';
+import { DocumentPreview } from './components/documentPreview/DocumentPreview';
 import { Sidebar } from './components/Sidebar';
 import { DocumentSessionProvider } from './app/documentSessionContext';
 import { useDocumentSession } from './app/useDocumentSession';
@@ -12,6 +13,7 @@ import './App.css';
 
 function AppContent() {
     const { state, dispatch } = useDocumentSession();
+    const [sidebarActiveTab, setSidebarActiveTab] = useState<'suggestions' | 'chat'>('suggestions');
     const {
         document,
         jobDescription,
@@ -159,13 +161,20 @@ function AppContent() {
                     changes={changes}
                     suggestions={suggestions}
                     activeParagraphId={activeParagraphId}
-                    onSelectParagraph={(paragraphId) => dispatch({ type: 'setActiveParagraph', paragraphId })}
+                    onSelectParagraph={(paragraphId) => {
+                        dispatch({ type: 'setActiveParagraph', paragraphId });
+                        if (paragraphId) {
+                            setSidebarActiveTab('suggestions');
+                        }
+                    }}
                 />
 
                 <Sidebar
+                    activeTab={sidebarActiveTab}
                     suggestions={suggestions}
                     changes={changes}
                     activeParagraphId={activeParagraphId}
+                    onActiveTabChange={setSidebarActiveTab}
                     onAcceptSuggestion={(suggestion, replacement) => dispatch({
                         type: 'acceptSuggestion',
                         suggestion,

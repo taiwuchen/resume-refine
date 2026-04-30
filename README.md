@@ -30,7 +30,7 @@ An interactive, Grammarly-style resume refinement webapp that helps optimize you
 
 3. Start Gotenberg for DOCX to PDF preview generation:
    ```bash
-   docker run --rm -p 3001:3000 gotenberg/gotenberg:8
+   docker run --rm -p 3000:3000 gotenberg/gotenberg:8
    ```
    If you are using a remote renderer instead, point `GOTENBERG_URL` in `.env` to that service.
 

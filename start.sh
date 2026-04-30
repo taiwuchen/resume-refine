@@ -6,7 +6,7 @@
 cd "$(dirname "$0")"
 
 echo "Starting Resume Refine..."
-echo "Expecting Gotenberg on http://localhost:3001 for PDF previews..."
+echo "Expecting Gotenberg on http://localhost:3000 for PDF previews..."
 
 # Start backend with venv
 echo "Starting backend on http://localhost:8000..."

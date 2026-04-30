@@ -111,6 +111,7 @@ export function DocumentPreview({
         changes,
         suggestions,
         activeParagraphId,
+        previewViewportRef,
     });
 
     const effectiveRenderError = fetchError ?? loadError ?? renderError;

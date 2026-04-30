@@ -16,6 +16,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex: 0 0 auto;
 }
 
 .preview-title {
@@ -40,13 +41,15 @@
 }
 
 .pdf-preview-stage {
+    display: flex;
     min-height: 100%;
     padding: var(--spacing-lg);
 }
 
 .pdf-preview-frame-wrap {
     position: relative;
-    min-height: calc(100vh - 240px);
+    flex: 1 0 auto;
+    min-height: 100%;
     background: #d9d7d2;
     border-radius: var(--radius-md);
     overflow: hidden;
@@ -195,10 +198,6 @@
 
     .pdf-preview-stage {
         padding: var(--spacing-md);
-    }
-
-    .pdf-preview-frame-wrap {
-        min-height: 70vh;
     }
 
     .pdf-pages-host {

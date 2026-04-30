@@ -2,10 +2,31 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import type { Suggestion, ChatMessage, ChatEdit, Change } from '../types';
 import './Sidebar.css';
 
+function scrollChildIntoContainer(container: HTMLElement, child: HTMLElement) {
+    const containerRect = container.getBoundingClientRect();
+    const childRect = child.getBoundingClientRect();
+    let nextScrollTop = container.scrollTop;
+
+    if (childRect.top < containerRect.top) {
+        nextScrollTop += childRect.top - containerRect.top;
+    } else if (childRect.bottom > containerRect.bottom) {
+        nextScrollTop += childRect.bottom - containerRect.bottom;
+    } else {
+        return;
+    }
+
+    container.scrollTo({
+        top: Math.max(0, Math.min(nextScrollTop, container.scrollHeight - container.clientHeight)),
+        behavior: 'smooth',
+    });
+}
+
 interface SidebarProps {
+    activeTab: 'suggestions' | 'chat';
     suggestions: Suggestion[];
     changes: Change[];
     activeParagraphId: string | null;
+    onActiveTabChange: (activeTab: 'suggestions' | 'chat') => void;
     onAcceptSuggestion: (suggestion: Suggestion, replacement: string) => void;
     onDismissSuggestion: (suggestionId: string) => void;
     onRefreshSuggestion: (suggestion: Suggestion) => void;
@@ -22,9 +43,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({
+    activeTab,
     suggestions,
     changes,
     activeParagraphId,
+    onActiveTabChange,
     onAcceptSuggestion,
     onDismissSuggestion,
     onRefreshSuggestion,
@@ -39,11 +62,16 @@ export function Sidebar({
     isChatLoading,
     hasDocument,
 }: SidebarProps) {
-    const [activeTab, setActiveTab] = useState<'suggestions' | 'chat'>('suggestions');
     const [expandedId, setExpandedId] = useState<string | null>(null);
     const [chatInput, setChatInput] = useState('');
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const chatMessagesRef = useRef<HTMLDivElement>(null);
+    const suggestionsListRef = useRef<HTMLDivElement>(null);
     const suggestionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+    const activeSuggestionId = useMemo(
+        () => suggestions.find((suggestion) => suggestion.paragraph_id === activeParagraphId)?.id ?? null,
+        [activeParagraphId, suggestions]
+    );
+    const visibleExpandedId = activeSuggestionId ?? expandedId;
     const changedParagraphIds = useMemo(
         () => new Set(changes.map((change) => change.paragraph_id)),
         [changes]
@@ -55,21 +83,24 @@ export function Sidebar({
 
     useEffect(() => {
         if (activeTab !== 'chat') return;
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [activeTab, chatMessages]);
+        const chatMessagesElement = chatMessagesRef.current;
+        if (!chatMessagesElement) return;
+
+        chatMessagesElement.scrollTo({
+            top: chatMessagesElement.scrollHeight,
+            behavior: 'smooth',
+        });
+    }, [activeTab, chatMessages.length, isChatLoading]);
 
     useEffect(() => {
-        if (!activeParagraphId) return;
-        const activeSuggestion = suggestions.find((suggestion) => suggestion.paragraph_id === activeParagraphId);
-        if (!activeSuggestion) return;
+        if (activeTab !== 'suggestions' || !visibleExpandedId) return;
 
-        setActiveTab('suggestions');
-        setExpandedId(activeSuggestion.id);
-        suggestionCardRefs.current[activeSuggestion.id]?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-        });
-    }, [activeParagraphId, suggestions]);
+        const suggestionsListElement = suggestionsListRef.current;
+        const suggestionCardElement = suggestionCardRefs.current[visibleExpandedId];
+        if (!suggestionsListElement || !suggestionCardElement) return;
+
+        scrollChildIntoContainer(suggestionsListElement, suggestionCardElement);
+    }, [activeTab, visibleExpandedId]);
 
     const handleChatSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -86,7 +117,7 @@ export function Sidebar({
                     role="tab"
                     aria-selected={activeTab === 'suggestions'}
                     className={`sidebar-tab ${activeTab === 'suggestions' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('suggestions')}
+                    onClick={() => onActiveTabChange('suggestions')}
                 >
                     <span className="section-title">
                         Suggestions {suggestions.length > 0 && `(${pendingCount} pending)`}
@@ -97,7 +128,7 @@ export function Sidebar({
                     role="tab"
                     aria-selected={activeTab === 'chat'}
                     className={`sidebar-tab ${activeTab === 'chat' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('chat')}
+                    onClick={() => onActiveTabChange('chat')}
                 >
                     <span className="section-title">Chat</span>
                 </button>
@@ -126,21 +157,21 @@ export function Sidebar({
                         )}
 
                         {!isAnalyzing && suggestions.length > 0 && (
-                            <div className="suggestions-list">
+                            <div className="suggestions-list" ref={suggestionsListRef}>
                                 {suggestions.map((suggestion) => (
                                     <div
                                         key={suggestion.id}
                                         ref={(node) => {
                                             suggestionCardRefs.current[suggestion.id] = node;
                                         }}
-                                        className={`suggestion-card ${expandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}
+                                        className={`suggestion-card ${visibleExpandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}
                                     >
                                         <div
                                             className="suggestion-header"
                                             onClick={() => {
-                                                setActiveTab('suggestions');
+                                                onActiveTabChange('suggestions');
                                                 onSelectSuggestion(suggestion.paragraph_id);
-                                                setExpandedId(expandedId === suggestion.id ? null : suggestion.id);
+                                                setExpandedId(visibleExpandedId === suggestion.id ? null : suggestion.id);
                                             }}
                                         >
                                             <div className="suggestion-summary">
@@ -149,10 +180,10 @@ export function Sidebar({
                                                 </div>
                                                 <p className="original-text">{suggestion.original_text}</p>
                                             </div>
-                                            <span className="expand-icon">{expandedId === suggestion.id ? '▲' : '▼'}</span>
+                                            <span className="expand-icon">{visibleExpandedId === suggestion.id ? '▲' : '▼'}</span>
                                         </div>
 
-                                        {expandedId === suggestion.id && (
+                                        {visibleExpandedId === suggestion.id && (
                                             <div className="suggestion-options">
                                             <div className="options-header">
                                                 <span>Alternatives</span>
@@ -219,7 +250,7 @@ export function Sidebar({
                             )}
                         </div>
 
-                        <div className="chat-messages">
+                        <div className="chat-messages" ref={chatMessagesRef}>
                             {chatMessages.length === 0 && !isChatLoading && (
                                 <div className="chat-empty">
                                     <p>Ask anything about your resume</p>
@@ -279,8 +310,6 @@ export function Sidebar({
                                     </div>
                                 </div>
                             )}
-
-                            <div ref={messagesEndRef} />
                         </div>
 
                         <form className="chat-input-form" onSubmit={handleChatSubmit}>
