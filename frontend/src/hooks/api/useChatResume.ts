@@ -1,5 +1,5 @@
 import { API_BASE } from '../../config/api';
-import type { ChatEdit } from '../../types';
+import type { Change, ChatEdit, Suggestion } from '../../types';
 import { readErrorDetail } from './shared';
 
 export interface ChatApiMessage {
@@ -16,6 +16,10 @@ export async function sendChatMessage(
     docId: string,
     jobDescription: string,
     messages: ChatApiMessage[],
+    changes: Change[] = [],
+    analysisId: string | null = null,
+    activeSuggestionId: string | null = null,
+    suggestions: Suggestion[] = [],
 ): Promise<ChatApiResponse> {
     const response = await fetch(`${API_BASE}/chat`, {
         method: 'POST',
@@ -24,6 +28,10 @@ export async function sendChatMessage(
             doc_id: docId,
             job_description: jobDescription,
             messages,
+            changes,
+            analysis_id: analysisId,
+            active_suggestion_id: activeSuggestionId,
+            suggestions,
         }),
     });
 

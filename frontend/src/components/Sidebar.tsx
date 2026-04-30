@@ -26,16 +26,23 @@ interface SidebarProps {
     suggestions: Suggestion[];
     changes: Change[];
     activeParagraphId: string | null;
+    activeSuggestionId: string | null;
+    readinessScore: number | null;
+    analysisCacheHit: boolean;
+    isAnalysisStale: boolean;
     onActiveTabChange: (activeTab: 'suggestions' | 'chat') => void;
     onAcceptSuggestion: (suggestion: Suggestion, replacement: string) => void;
     onDismissSuggestion: (suggestionId: string) => void;
     onRefreshSuggestion: (suggestion: Suggestion) => void;
+    onGenerateAnotherPass: () => void;
     onSelectSuggestion: (paragraphId: string | null) => void;
+    onAskSuggestion: (suggestion: Suggestion) => void;
     onRevertSuggestion: (paragraphId: string) => void;
     isAnalyzing: boolean;
     chatMessages: ChatMessage[];
     onSendMessage: (message: string) => void;
     onClearChat: () => void;
+    onUseEditAsSuggestion: (edit: ChatEdit) => void;
     onAcceptEdit: (edit: ChatEdit) => void;
     onRejectEdit: (messageId: string, editIndex: number) => void;
     isChatLoading: boolean;
@@ -47,16 +54,23 @@ export function Sidebar({
     suggestions,
     changes,
     activeParagraphId,
+    activeSuggestionId,
+    readinessScore,
+    analysisCacheHit,
+    isAnalysisStale,
     onActiveTabChange,
     onAcceptSuggestion,
     onDismissSuggestion,
     onRefreshSuggestion,
+    onGenerateAnotherPass,
     onSelectSuggestion,
+    onAskSuggestion,
     onRevertSuggestion,
     isAnalyzing,
     chatMessages,
     onSendMessage,
     onClearChat,
+    onUseEditAsSuggestion,
     onAcceptEdit,
     onRejectEdit,
     isChatLoading,
@@ -67,19 +81,24 @@ export function Sidebar({
     const chatMessagesRef = useRef<HTMLDivElement>(null);
     const suggestionsListRef = useRef<HTMLDivElement>(null);
     const suggestionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-    const activeSuggestionId = useMemo(
-        () => suggestions.find((suggestion) => suggestion.paragraph_id === activeParagraphId)?.id ?? null,
-        [activeParagraphId, suggestions]
-    );
     const visibleExpandedId = activeSuggestionId ?? expandedId;
     const changedParagraphIds = useMemo(
         () => new Set(changes.map((change) => change.paragraph_id)),
         [changes]
     );
     const pendingCount = useMemo(
-        () => suggestions.filter((suggestion) => !changedParagraphIds.has(suggestion.paragraph_id)).length,
+        () => suggestions.filter((suggestion) => suggestion.state === 'open' && !changedParagraphIds.has(suggestion.paragraph_id)).length,
         [changedParagraphIds, suggestions]
     );
+    const groupedSuggestions = useMemo(() => {
+        const severityOrder: Suggestion['severity'][] = ['critical', 'recommended', 'optional'];
+        return severityOrder
+            .map((severity) => ({
+                severity,
+                suggestions: suggestions.filter((suggestion) => suggestion.severity === severity),
+            }))
+            .filter((group) => group.suggestions.length > 0);
+    }, [suggestions]);
 
     useEffect(() => {
         if (activeTab !== 'chat') return;
@@ -141,7 +160,30 @@ export function Sidebar({
                             <span className="section-title">
                                 Suggestions {suggestions.length > 0 && `(${pendingCount} pending)`}
                             </span>
+                            {suggestions.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="generate-pass-btn"
+                                    onClick={onGenerateAnotherPass}
+                                    disabled={isAnalyzing}
+                                >
+                                    Generate another pass
+                                </button>
+                            )}
                         </div>
+
+                        {(readinessScore !== null || analysisCacheHit || isAnalysisStale) && (
+                            <div className="analysis-status">
+                                {readinessScore !== null && (
+                                    <div>
+                                        <span className="analysis-status-label">Readiness</span>
+                                        <strong>{readinessScore}</strong>
+                                    </div>
+                                )}
+                                {analysisCacheHit && <span>Already analyzed this version.</span>}
+                                {isAnalysisStale && <span>Resume changed since last analysis.</span>}
+                            </div>
+                        )}
 
                         {isAnalyzing && (
                             <div className="loading-state">
@@ -158,14 +200,22 @@ export function Sidebar({
 
                         {!isAnalyzing && suggestions.length > 0 && (
                             <div className="suggestions-list" ref={suggestionsListRef}>
-                                {suggestions.map((suggestion) => (
-                                    <div
-                                        key={suggestion.id}
-                                        ref={(node) => {
-                                            suggestionCardRefs.current[suggestion.id] = node;
-                                        }}
-                                        className={`suggestion-card ${visibleExpandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}
-                                    >
+                                {groupedSuggestions.map((group) => (
+                                    <div key={group.severity} className="suggestion-group">
+                                        <div className="suggestion-group-title">{group.severity}</div>
+                                        {group.suggestions.map((suggestion) => {
+                                            const suggestionState = changedParagraphIds.has(suggestion.paragraph_id)
+                                                ? 'applied'
+                                                : suggestion.state;
+
+                                            return (
+                                                <div
+                                                    key={suggestion.id}
+                                                    ref={(node) => {
+                                                        suggestionCardRefs.current[suggestion.id] = node;
+                                                    }}
+                                                    className={`suggestion-card ${visibleExpandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${suggestionState}`}
+                                                >
                                         <div
                                             className="suggestion-header"
                                             onClick={() => {
@@ -175,10 +225,13 @@ export function Sidebar({
                                             }}
                                         >
                                             <div className="suggestion-summary">
-                                                <div className={`suggestion-status ${changedParagraphIds.has(suggestion.paragraph_id) ? 'applied' : 'pending'}`}>
-                                                    {changedParagraphIds.has(suggestion.paragraph_id) ? 'Applied' : 'Pending'}
+                                                <div className={`suggestion-status ${suggestionState}`}>
+                                                    {suggestionState}
                                                 </div>
                                                 <p className="original-text">{suggestion.original_text}</p>
+                                                {suggestion.reason && (
+                                                    <p className="suggestion-reason">{suggestion.reason}</p>
+                                                )}
                                             </div>
                                             <span className="expand-icon">{visibleExpandedId === suggestion.id ? '▲' : '▼'}</span>
                                         </div>
@@ -192,14 +245,22 @@ export function Sidebar({
                                                         className="action-btn refresh"
                                                         onClick={() => onRefreshSuggestion(suggestion)}
                                                         title="Refresh"
+                                                        disabled={suggestion.state === 'dismissed'}
                                                     >
                                                         ↻
+                                                    </button>
+                                                    <button
+                                                        className="ask-suggestion-btn"
+                                                        onClick={() => onAskSuggestion(suggestion)}
+                                                    >
+                                                        Ask about this
                                                     </button>
                                                     {!changedParagraphIds.has(suggestion.paragraph_id) && (
                                                         <button
                                                             className="action-btn dismiss"
                                                             onClick={() => onDismissSuggestion(suggestion.id)}
                                                             title="Dismiss"
+                                                            disabled={suggestion.state === 'dismissed'}
                                                         >
                                                             ×
                                                         </button>
@@ -225,6 +286,7 @@ export function Sidebar({
                                                         key={idx}
                                                         className="alternative-btn"
                                                         onClick={() => onAcceptSuggestion(suggestion, alt)}
+                                                        disabled={suggestion.state === 'dismissed'}
                                                     >
                                                         <span className="alt-number">{idx + 1}</span>
                                                         <span className="alt-text">{alt}</span>
@@ -232,6 +294,9 @@ export function Sidebar({
                                                 ))}
                                             </div>
                                         )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 ))}
                             </div>
@@ -281,6 +346,12 @@ export function Sidebar({
                                                         )}
                                                     </div>
                                                     <div className="edit-actions">
+                                                        <button
+                                                            className="edit-use"
+                                                            onClick={() => onUseEditAsSuggestion(edit)}
+                                                        >
+                                                            Use as suggestion
+                                                        </button>
                                                         <button
                                                             className="edit-accept"
                                                             onClick={() => onAcceptEdit(edit)}

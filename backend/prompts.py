@@ -17,7 +17,11 @@ ANALYZE_SYSTEM_PROMPT = dedent("""\
     {
         "suggestions": [
             {
+                "issue_key": "stable-kebab-case-key",
                 "paragraph_id": "p3",
+                "category": "impact",
+                "severity": "critical",
+                "reason": "Brief reason this matters for the target job.",
                 "alternatives": [
                     "improved version 1",
                     "improved version 2", 
@@ -86,6 +90,8 @@ CHAT_SYSTEM_PROMPT = dedent("""\
     IMPORTANT:
     - For edits, paragraph_id must come from the editable catalog
     - Each edit must rewrite a full paragraph, not a phrase fragment
+    - Do not claim an edit has been applied; the app applies edits only after confirmation
+    - If active suggestion context is provided, answer in relation to that suggestion
     - Keep your message conversational and helpful
     - Be specific when suggesting improvements
 """).strip()
@@ -120,11 +126,17 @@ def build_chat_context_prompt(
     resume_text: str,
     job_description: str,
     editable_paragraph_catalog: str,
+    active_suggestion_context: str = "",
+    suggestion_state_context: str = "",
 ) -> str:
     context = f"## RESUME\n\n{resume_text}"
     context += f"\n\n## EDITABLE PARAGRAPHS\n\n{editable_paragraph_catalog}"
     if job_description.strip():
         context += f"\n\n## TARGET JOB DESCRIPTION\n\n{job_description}"
+    if active_suggestion_context:
+        context += f"\n\n## ACTIVE SUGGESTION\n\n{active_suggestion_context}"
+    if suggestion_state_context:
+        context += f"\n\n## CURRENT SUGGESTION STATES\n\n{suggestion_state_context}"
     return context
 
 

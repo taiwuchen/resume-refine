@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 
 from models.ai import Suggestion
@@ -6,6 +7,10 @@ from models.document import ParsedDocument
 from prompts import ANALYZE_SYSTEM_PROMPT, build_analyze_user_prompt
 from services.ai.llm import call_llm
 from services.document_utils import build_paragraph_catalog, get_editable_paragraphs
+
+
+VALID_CATEGORIES = {"impact", "keywords", "clarity", "length", "formatting", "relevance", "general"}
+VALID_SEVERITIES = {"critical", "recommended", "optional"}
 
 
 def analyze_resume(doc: ParsedDocument, job_description: str) -> list[Suggestion]:
@@ -26,6 +31,22 @@ def analyze_resume(doc: ParsedDocument, job_description: str) -> list[Suggestion
     ])
 
     return parse_analyze_response(response, doc)
+
+
+def calculate_readiness_score(suggestions: list[Suggestion]) -> int:
+    penalties = {
+        "critical": 10,
+        "recommended": 5,
+        "optional": 2,
+    }
+    total_penalty = sum(penalties.get(suggestion.severity, 5) for suggestion in suggestions)
+    return max(0, min(100, 100 - total_penalty))
+
+
+def build_issue_key(paragraph_id: str, category: str, reason: str) -> str:
+    key_source = f"{paragraph_id}-{category}-{reason}" if reason else f"{paragraph_id}-{category}"
+    key = re.sub(r"[^a-z0-9]+", "-", key_source.casefold()).strip("-")
+    return key[:80] or f"{paragraph_id}-general"
 
 
 def parse_analyze_response(response: str, doc: ParsedDocument) -> list[Suggestion]:
@@ -73,6 +94,22 @@ def parse_analyze_response(response: str, doc: ParsedDocument) -> list[Suggestio
             print(f"[analyzer] Not enough alternatives for paragraph {paragraph_id}")
             continue
 
+        category = item.get("category", "general")
+        if not isinstance(category, str) or category not in VALID_CATEGORIES:
+            category = "general"
+
+        severity = item.get("severity", "recommended")
+        if not isinstance(severity, str) or severity not in VALID_SEVERITIES:
+            severity = "recommended"
+
+        reason = item.get("reason", "")
+        if not isinstance(reason, str):
+            reason = ""
+
+        issue_key = item.get("issue_key")
+        if not isinstance(issue_key, str) or not issue_key.strip():
+            issue_key = build_issue_key(paragraph_id, category, reason)
+
         suggestions.append(Suggestion(
             id=str(uuid.uuid4()),
             paragraph_id=paragraph_id,
@@ -80,6 +117,12 @@ def parse_analyze_response(response: str, doc: ParsedDocument) -> list[Suggestio
             end=paragraph.end,
             original_text=paragraph.text,
             alternatives=normalized_alternatives[:3],
+            issue_key=issue_key.strip(),
+            category=category,
+            severity=severity,
+            state="open",
+            reason=reason.strip(),
+            source="analysis",
         ))
         seen_ids.add(paragraph_id)
 

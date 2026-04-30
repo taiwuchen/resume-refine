@@ -1,7 +1,7 @@
 import json
 import re
 
-from models.ai import ChatEdit, ChatMessage, ChatResponse
+from models.ai import ChatEdit, ChatMessage, ChatResponse, Suggestion
 from models.document import ParsedDocument
 from prompts import CHAT_SYSTEM_PROMPT, build_chat_context_prompt
 from services.ai.llm import call_llm
@@ -12,12 +12,17 @@ def handle_chat(
     doc: ParsedDocument,
     job_description: str,
     messages: list[ChatMessage],
+    active_suggestion_id: str | None = None,
+    suggestions: list[Suggestion] | None = None,
 ) -> ChatResponse:
     editable_paragraphs = get_editable_paragraphs(doc)
+    suggestion_list = suggestions or []
     context = build_chat_context_prompt(
         doc.full_text,
         job_description,
         build_paragraph_catalog(editable_paragraphs),
+        build_active_suggestion_context(active_suggestion_id, suggestion_list),
+        build_suggestion_state_context(suggestion_list),
     )
     system_content = f"{CHAT_SYSTEM_PROMPT}\n\n{context}"
 
@@ -27,6 +32,47 @@ def handle_chat(
 
     raw_response = call_llm(llm_messages)
     return parse_chat_response(raw_response, doc)
+
+
+def build_active_suggestion_context(
+    active_suggestion_id: str | None,
+    suggestions: list[Suggestion],
+) -> str:
+    if not active_suggestion_id:
+        return ""
+
+    suggestion = next(
+        (candidate for candidate in suggestions if candidate.id == active_suggestion_id),
+        None,
+    )
+    if suggestion is None:
+        return ""
+
+    alternatives = "\n".join(
+        f"- {alternative}"
+        for alternative in suggestion.alternatives
+    )
+    return "\n".join([
+        f"id: {suggestion.id}",
+        f"paragraph_id: {suggestion.paragraph_id}",
+        f"category: {suggestion.category}",
+        f"severity: {suggestion.severity}",
+        f"state: {suggestion.state}",
+        f"reason: {suggestion.reason}",
+        f"original_text: {suggestion.original_text}",
+        "alternatives:",
+        alternatives,
+    ])
+
+
+def build_suggestion_state_context(suggestions: list[Suggestion]) -> str:
+    if not suggestions:
+        return ""
+
+    return "\n".join(
+        f"- {suggestion.paragraph_id} | {suggestion.state} | {suggestion.severity} | {suggestion.category} | {suggestion.reason}"
+        for suggestion in suggestions
+    )
 
 
 def parse_chat_response(raw: str, doc: ParsedDocument) -> ChatResponse:

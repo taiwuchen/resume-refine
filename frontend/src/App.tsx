@@ -21,6 +21,11 @@ function AppContent() {
         changes,
         chatMessages,
         activeParagraphId,
+        activeSuggestionId,
+        activeAnalysisId,
+        readinessScore,
+        analysisCacheHit,
+        isAnalysisStale,
         isAnalyzing,
         isExporting,
         isChatLoading,
@@ -36,15 +41,22 @@ function AppContent() {
         }
     };
 
-    const handleAnalyze = async () => {
+    const handleAnalyze = async (generateNewPass = false) => {
         if (!document || !jobDescription.trim()) {
             return;
         }
 
         dispatch({ type: 'analyzeStart' });
         try {
-            const nextSuggestions = await analyzeResume(document.doc_id, jobDescription);
-            dispatch({ type: 'analyzeSuccess', suggestions: nextSuggestions });
+            const result = await analyzeResume(document.doc_id, jobDescription, changes, generateNewPass);
+            dispatch({
+                type: 'analyzeSuccess',
+                suggestions: result.suggestions,
+                analysisId: result.analysis_id,
+                resumeVersionId: result.resume_version_id,
+                readinessScore: result.readiness_score,
+                cacheHit: result.cache_hit,
+            });
         } catch (error) {
             dispatch({ type: 'analyzeFailure' });
             console.error('Analysis failed:', error);
@@ -122,7 +134,15 @@ function AppContent() {
                 content: chatMessage.content,
             }));
 
-            const response = await sendChatMessage(document.doc_id, jobDescription, apiMessages);
+            const response = await sendChatMessage(
+                document.doc_id,
+                jobDescription,
+                apiMessages,
+                changes,
+                activeAnalysisId,
+                activeSuggestionId,
+                suggestions,
+            );
             const assistantMessage: ChatMessage = {
                 id: `assistant-${Date.now()}`,
                 role: 'assistant',
@@ -153,6 +173,7 @@ function AppContent() {
                 hasDocument={!!document}
                 isAnalyzing={isAnalyzing}
                 isExporting={isExporting}
+                analyzeLabel={suggestions.length > 0 || isAnalysisStale ? 'Re-analyze' : 'Analyze'}
             />
 
             <main className="main-content">
@@ -174,6 +195,10 @@ function AppContent() {
                     suggestions={suggestions}
                     changes={changes}
                     activeParagraphId={activeParagraphId}
+                    activeSuggestionId={activeSuggestionId}
+                    readinessScore={readinessScore}
+                    analysisCacheHit={analysisCacheHit}
+                    isAnalysisStale={isAnalysisStale}
                     onActiveTabChange={setSidebarActiveTab}
                     onAcceptSuggestion={(suggestion, replacement) => dispatch({
                         type: 'acceptSuggestion',
@@ -182,12 +207,22 @@ function AppContent() {
                     })}
                     onDismissSuggestion={(suggestionId) => dispatch({ type: 'dismissSuggestion', suggestionId })}
                     onRefreshSuggestion={(suggestion) => handleRefreshSuggestion(suggestion.id)}
+                    onGenerateAnotherPass={() => handleAnalyze(true)}
                     onSelectSuggestion={(paragraphId) => dispatch({ type: 'setActiveParagraph', paragraphId })}
+                    onAskSuggestion={(suggestion) => {
+                        dispatch({ type: 'setActiveParagraph', paragraphId: suggestion.paragraph_id });
+                        setSidebarActiveTab('chat');
+                    }}
                     onRevertSuggestion={(paragraphId) => dispatch({ type: 'revertChange', paragraphId })}
                     isAnalyzing={isAnalyzing}
                     chatMessages={chatMessages}
                     onSendMessage={handleSendMessage}
                     onClearChat={() => dispatch({ type: 'clearChat' })}
+                    onUseEditAsSuggestion={(edit) => dispatch({
+                        type: 'addChatSuggestion',
+                        edit,
+                        parentSuggestionId: activeSuggestionId,
+                    })}
                     onAcceptEdit={(edit) => dispatch({ type: 'acceptChatEdit', edit })}
                     onRejectEdit={(messageId, editIndex) => dispatch({ type: 'rejectChatEdit', messageId, editIndex })}
                     isChatLoading={isChatLoading}

@@ -1,4 +1,5 @@
 import json
+import re
 import uuid
 
 from models.ai import Suggestion
@@ -44,7 +45,19 @@ def generate_suggestions(
         end=paragraph.end,
         original_text=paragraph.text,
         alternatives=alternatives,
+        issue_key=build_suggestion_issue_key(paragraph_id, user_prompt),
+        category="general",
+        severity="recommended",
+        state="open",
+        reason=user_prompt or "Generated alternative wording for this paragraph.",
+        source="analysis",
     )
+
+
+def build_suggestion_issue_key(paragraph_id: str, user_prompt: str | None) -> str:
+    suffix = user_prompt or "manual-refresh"
+    normalized_suffix = re.sub(r"[^a-z0-9]+", "-", suffix.casefold()).strip("-")
+    return f"{paragraph_id}-{normalized_suffix[:48] or 'manual-refresh'}"
 
 
 def parse_suggest_response(response: str) -> list[str]:

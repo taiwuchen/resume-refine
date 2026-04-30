@@ -5,6 +5,24 @@ export interface Suggestion {
     end: number;
     original_text: string;
     alternatives: string[];
+    issue_key: string | null;
+    category: string;
+    severity: 'critical' | 'recommended' | 'optional';
+    state: 'open' | 'accepted' | 'dismissed' | 'regenerated';
+    reason: string;
+    source: 'analysis' | 'chat' | 'manual';
+    parent_suggestion_id: string | null;
+}
+
+export interface AnalyzeResult {
+    analysis_id: string;
+    resume_version_id: string;
+    resume_hash: string;
+    job_description_hash: string;
+    readiness_score: number;
+    status: string;
+    cache_hit: boolean;
+    suggestions: Suggestion[];
 }
 
 export interface ChatEdit {

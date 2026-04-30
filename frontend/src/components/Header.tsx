@@ -10,6 +10,7 @@ interface HeaderProps {
     hasDocument: boolean;
     isAnalyzing: boolean;
     isExporting: boolean;
+    analyzeLabel: string;
 }
 
 export function Header({
@@ -21,6 +22,7 @@ export function Header({
     hasDocument,
     isAnalyzing,
     isExporting,
+    analyzeLabel,
 }: HeaderProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isJdExpanded, setIsJdExpanded] = useState(false);
@@ -50,10 +52,10 @@ export function Header({
                     </button>
                     <button
                         className="btn btn-primary"
-                        onClick={onAnalyze}
+                        onClick={() => onAnalyze()}
                         disabled={!hasDocument || !jobDescription.trim() || isAnalyzing}
                     >
-                        {isAnalyzing ? 'Analyzing...' : 'Analyze'}
+                        {isAnalyzing ? 'Analyzing...' : analyzeLabel}
                     </button>
                     <button
                         className="btn btn-success"

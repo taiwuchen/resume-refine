@@ -1,23 +1,29 @@
 import { API_BASE } from '../../config/api';
-import type { Suggestion } from '../../types';
+import type { AnalyzeResult, Change, Suggestion } from '../../types';
 import { readErrorDetail } from './shared';
 
 export async function analyzeResume(
     docId: string,
     jobDescription: string,
-): Promise<Suggestion[]> {
+    changes: Change[] = [],
+    generateNewPass = false,
+): Promise<AnalyzeResult> {
     const response = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ doc_id: docId, job_description: jobDescription }),
+        body: JSON.stringify({
+            doc_id: docId,
+            job_description: jobDescription,
+            changes,
+            generate_new_pass: generateNewPass,
+        }),
     });
 
     if (!response.ok) {
         throw new Error(await readErrorDetail(response, 'Analysis failed'));
     }
 
-    const data = await response.json();
-    return data.suggestions;
+    return response.json();
 }
 
 export async function getSuggestions(
