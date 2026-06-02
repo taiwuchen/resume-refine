@@ -12,6 +12,7 @@ export interface Suggestion {
     reason: string;
     source: 'analysis' | 'chat' | 'manual';
     parent_suggestion_id: string | null;
+    applied_text?: string | null;
 }
 
 export interface AnalyzeResult {

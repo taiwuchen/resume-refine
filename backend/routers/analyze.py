@@ -49,7 +49,7 @@ async def analyze(request: AnalyzeRequest):
                 suggestions=existing_analysis.suggestions,
             )
 
-    suggestions = analyze_resume(effective_doc, request.job_description)
+    suggestions = analyze_resume(effective_doc, request.job_description, request.decision_history)
     readiness_score = calculate_readiness_score(suggestions)
     analysis = analysis_repository.store(
         resume_version_id=resume_version_id,

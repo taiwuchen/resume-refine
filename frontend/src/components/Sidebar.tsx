@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import type { Suggestion, ChatMessage, ChatEdit, Change } from '../types';
+import type { Suggestion, ChatMessage, ChatEdit } from '../types';
 import './Sidebar.css';
 
 function scrollChildIntoContainer(container: HTMLElement, child: HTMLElement) {
@@ -22,26 +22,32 @@ function scrollChildIntoContainer(container: HTMLElement, child: HTMLElement) {
 }
 
 function formatSuggestionLabel(value: string) {
-    return value.replace(/_/g, ' ');
+    return value === 'accepted' ? 'applied' : value.replace(/_/g, ' ');
+}
+
+function isOpenSuggestion(suggestion: Suggestion) {
+    return suggestion.state === 'open' || suggestion.state === 'regenerated';
 }
 
 interface SidebarProps {
     activeTab: 'suggestions' | 'chat';
     suggestions: Suggestion[];
-    changes: Change[];
     activeParagraphId: string | null;
     activeSuggestionId: string | null;
+    activeSuggestion: Suggestion | null;
     readinessScore: number | null;
     analysisCacheHit: boolean;
     isAnalysisStale: boolean;
+    chatDraft: string;
+    onChatDraftChange: (value: string) => void;
     onActiveTabChange: (activeTab: 'suggestions' | 'chat') => void;
     onAcceptSuggestion: (suggestion: Suggestion, replacement: string) => void;
     onDismissSuggestion: (suggestionId: string) => void;
     onRefreshSuggestion: (suggestion: Suggestion) => void;
     onGenerateAnotherPass: () => void;
-    onSelectSuggestion: (paragraphId: string | null) => void;
+    onSelectSuggestion: (suggestionId: string | null) => void;
     onAskSuggestion: (suggestion: Suggestion) => void;
-    onRevertSuggestion: (paragraphId: string) => void;
+    onRevertSuggestion: (suggestion: Suggestion) => void;
     isAnalyzing: boolean;
     chatMessages: ChatMessage[];
     onSendMessage: (message: string) => void;
@@ -56,12 +62,14 @@ interface SidebarProps {
 export function Sidebar({
     activeTab,
     suggestions,
-    changes,
     activeParagraphId,
     activeSuggestionId,
+    activeSuggestion,
     readinessScore,
     analysisCacheHit,
     isAnalysisStale,
+    chatDraft,
+    onChatDraftChange,
     onActiveTabChange,
     onAcceptSuggestion,
     onDismissSuggestion,
@@ -81,18 +89,18 @@ export function Sidebar({
     hasDocument,
 }: SidebarProps) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
-    const [chatInput, setChatInput] = useState('');
+    const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
     const chatMessagesRef = useRef<HTMLDivElement>(null);
     const suggestionsListRef = useRef<HTMLDivElement>(null);
     const suggestionCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
-    const visibleExpandedId = activeSuggestionId ?? expandedId;
-    const changedParagraphIds = useMemo(
-        () => new Set(changes.map((change) => change.paragraph_id)),
-        [changes]
+    const visibleExpandedId = expandedId;
+    const openSuggestions = useMemo(
+        () => suggestions.filter(isOpenSuggestion),
+        [suggestions]
     );
-    const pendingCount = useMemo(
-        () => suggestions.filter((suggestion) => suggestion.state === 'open' && !changedParagraphIds.has(suggestion.paragraph_id)).length,
-        [changedParagraphIds, suggestions]
+    const historicalSuggestions = useMemo(
+        () => suggestions.filter((suggestion) => !isOpenSuggestion(suggestion)),
+        [suggestions]
     );
 
     useEffect(() => {
@@ -107,6 +115,21 @@ export function Sidebar({
     }, [activeTab, chatMessages.length, isChatLoading]);
 
     useEffect(() => {
+        setExpandedId(activeSuggestionId);
+    }, [activeSuggestionId]);
+
+    useEffect(() => {
+        if (!activeSuggestionId) return;
+
+        const activeSuggestionIsHistorical = historicalSuggestions.some(
+            (suggestion) => suggestion.id === activeSuggestionId
+        );
+        if (activeSuggestionIsHistorical) {
+            setIsHistoryExpanded(true);
+        }
+    }, [activeSuggestionId, historicalSuggestions]);
+
+    useEffect(() => {
         if (activeTab !== 'suggestions' || !visibleExpandedId) return;
 
         const suggestionsListElement = suggestionsListRef.current;
@@ -114,13 +137,116 @@ export function Sidebar({
         if (!suggestionsListElement || !suggestionCardElement) return;
 
         scrollChildIntoContainer(suggestionsListElement, suggestionCardElement);
-    }, [activeTab, visibleExpandedId]);
+    }, [activeTab, visibleExpandedId, isHistoryExpanded]);
 
     const handleChatSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!chatInput.trim() || isChatLoading || !hasDocument) return;
-        onSendMessage(chatInput);
-        setChatInput('');
+        if (!chatDraft.trim() || isChatLoading || !hasDocument) return;
+        onSendMessage(chatDraft);
+    };
+
+    const renderSuggestionCard = (suggestion: Suggestion) => {
+        const isExpanded = visibleExpandedId === suggestion.id;
+        const isApplied = suggestion.state === 'accepted';
+        const isDismissed = suggestion.state === 'dismissed';
+        const canRevert = isApplied || isDismissed;
+        const appliedText = suggestion.applied_text ?? null;
+
+        return (
+            <div
+                key={suggestion.id}
+                ref={(node) => {
+                    suggestionCardRefs.current[suggestion.id] = node;
+                }}
+                className={`suggestion-card ${isExpanded ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${suggestion.state}`}
+            >
+                <div
+                    className="suggestion-header"
+                    onClick={() => {
+                        onActiveTabChange('suggestions');
+                        onSelectSuggestion(suggestion.id);
+                        setExpandedId(isExpanded ? null : suggestion.id);
+                    }}
+                >
+                    <div className="suggestion-summary">
+                        <div className="suggestion-badges">
+                            <span className={`suggestion-status ${suggestion.state}`}>
+                                {formatSuggestionLabel(suggestion.state)}
+                            </span>
+                            <span className={`suggestion-severity ${suggestion.severity}`}>
+                                {formatSuggestionLabel(suggestion.severity)}
+                            </span>
+                        </div>
+                        <p className="original-text">{suggestion.original_text}</p>
+                        {suggestion.reason && (
+                            <p className="suggestion-reason">{suggestion.reason}</p>
+                        )}
+                    </div>
+                    <span className="expand-icon">{isExpanded ? '▲' : '▼'}</span>
+                </div>
+
+                {isExpanded && (
+                    <div className="suggestion-options">
+                        <div className="options-header">
+                            <span>Alternatives</span>
+                            <div className="option-actions">
+                                <button
+                                    className="action-btn refresh"
+                                    onClick={() => onRefreshSuggestion(suggestion)}
+                                    title="Refresh"
+                                    disabled={suggestion.state === 'dismissed' || isApplied}
+                                >
+                                    ↻
+                                </button>
+                                <button
+                                    className="ask-suggestion-btn"
+                                    onClick={() => onAskSuggestion(suggestion)}
+                                >
+                                    {isApplied ? 'Review applied edit' : 'Ask about this'}
+                                </button>
+                                {isOpenSuggestion(suggestion) && (
+                                    <button
+                                        className="action-btn dismiss"
+                                        onClick={() => onDismissSuggestion(suggestion.id)}
+                                        title="Dismiss"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {canRevert && (
+                            <div className="applied-note">
+                                <div>
+                                    <span>{isApplied ? 'Applied edit' : 'Dismissed suggestion'}</span>
+                                    {appliedText && <p>{appliedText}</p>}
+                                </div>
+                                <button
+                                    type="button"
+                                    className="applied-note-revert"
+                                    onClick={() => onRevertSuggestion(suggestion)}
+                                >
+                                    Revert
+                                </button>
+                            </div>
+                        )}
+
+                        {suggestion.alternatives.map((alt, idx) => (
+                            <button
+                                key={idx}
+                                className={`alternative-btn ${appliedText === alt ? 'selected' : ''}`}
+                                onClick={() => onAcceptSuggestion(suggestion, alt)}
+                                disabled={suggestion.state === 'dismissed'}
+                            >
+                                <span className="alt-number">{idx + 1}</span>
+                                <span className="alt-text">{alt}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
     };
 
     return (
@@ -134,7 +260,7 @@ export function Sidebar({
                     onClick={() => onActiveTabChange('suggestions')}
                 >
                     <span className="section-title">
-                        Suggestions {suggestions.length > 0 && `(${pendingCount} pending)`}
+                        Suggestions {suggestions.length > 0 && `(${openSuggestions.length} open)`}
                     </span>
                 </button>
                 <button
@@ -153,7 +279,7 @@ export function Sidebar({
                     <div className="tab-view suggestions-tab" role="tabpanel">
                         <div className="tab-view-header">
                             <span className="section-title">
-                                Suggestions {suggestions.length > 0 && `(${pendingCount} pending)`}
+                                Suggestions {suggestions.length > 0 && `(${openSuggestions.length} open)`}
                             </span>
                             {suggestions.length > 0 && (
                                 <button
@@ -195,105 +321,24 @@ export function Sidebar({
 
                         {!isAnalyzing && suggestions.length > 0 && (
                             <div className="suggestions-list" ref={suggestionsListRef}>
-                                {suggestions.map((suggestion) => {
-                                    const suggestionState = changedParagraphIds.has(suggestion.paragraph_id)
-                                        ? 'applied'
-                                        : suggestion.state;
-
-                                    return (
-                                        <div
-                                            key={suggestion.id}
-                                            ref={(node) => {
-                                                suggestionCardRefs.current[suggestion.id] = node;
-                                            }}
-                                            className={`suggestion-card ${visibleExpandedId === suggestion.id ? 'expanded' : ''} ${activeParagraphId === suggestion.paragraph_id ? 'active' : ''} ${suggestionState}`}
+                                {openSuggestions.length === 0 && (
+                                    <div className="empty-state compact">
+                                        <p>No open suggestions</p>
+                                    </div>
+                                )}
+                                {openSuggestions.map(renderSuggestionCard)}
+                                {historicalSuggestions.length > 0 && (
+                                    <div className="suggestion-history">
+                                        <button
+                                            type="button"
+                                            className="history-toggle"
+                                            onClick={() => setIsHistoryExpanded(!isHistoryExpanded)}
                                         >
-                                            <div
-                                                className="suggestion-header"
-                                                onClick={() => {
-                                                    onActiveTabChange('suggestions');
-                                                    onSelectSuggestion(suggestion.paragraph_id);
-                                                    setExpandedId(visibleExpandedId === suggestion.id ? null : suggestion.id);
-                                                }}
-                                            >
-                                                <div className="suggestion-summary">
-                                                    <div className="suggestion-badges">
-                                                        <span className={`suggestion-status ${suggestionState}`}>
-                                                            {formatSuggestionLabel(suggestionState)}
-                                                        </span>
-                                                        <span className={`suggestion-severity ${suggestion.severity}`}>
-                                                            {formatSuggestionLabel(suggestion.severity)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="original-text">{suggestion.original_text}</p>
-                                                    {suggestion.reason && (
-                                                        <p className="suggestion-reason">{suggestion.reason}</p>
-                                                    )}
-                                                </div>
-                                                <span className="expand-icon">{visibleExpandedId === suggestion.id ? '▲' : '▼'}</span>
-                                            </div>
-
-                                            {visibleExpandedId === suggestion.id && (
-                                                <div className="suggestion-options">
-                                                    <div className="options-header">
-                                                        <span>Alternatives</span>
-                                                        <div className="option-actions">
-                                                            <button
-                                                                className="action-btn refresh"
-                                                                onClick={() => onRefreshSuggestion(suggestion)}
-                                                                title="Refresh"
-                                                                disabled={suggestion.state === 'dismissed'}
-                                                            >
-                                                                ↻
-                                                            </button>
-                                                            <button
-                                                                className="ask-suggestion-btn"
-                                                                onClick={() => onAskSuggestion(suggestion)}
-                                                            >
-                                                                Ask about this
-                                                            </button>
-                                                            {!changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                                <button
-                                                                    className="action-btn dismiss"
-                                                                    onClick={() => onDismissSuggestion(suggestion.id)}
-                                                                    title="Dismiss"
-                                                                    disabled={suggestion.state === 'dismissed'}
-                                                                >
-                                                                    ×
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {changedParagraphIds.has(suggestion.paragraph_id) && (
-                                                        <div className="applied-note">
-                                                            <span>This suggestion is currently applied in the document.</span>
-                                                            <button
-                                                                type="button"
-                                                                className="applied-note-revert"
-                                                                onClick={() => onRevertSuggestion(suggestion.paragraph_id)}
-                                                            >
-                                                                Revert
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {suggestion.alternatives.map((alt, idx) => (
-                                                        <button
-                                                            key={idx}
-                                                            className="alternative-btn"
-                                                            onClick={() => onAcceptSuggestion(suggestion, alt)}
-                                                            disabled={suggestion.state === 'dismissed'}
-                                                        >
-                                                            <span className="alt-number">{idx + 1}</span>
-                                                            <span className="alt-text">{alt}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
+                                            Applied and dismissed history ({historicalSuggestions.length}) {isHistoryExpanded ? '▲' : '▼'}
+                                        </button>
+                                        {isHistoryExpanded && historicalSuggestions.map(renderSuggestionCard)}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -309,6 +354,15 @@ export function Sidebar({
                                 </button>
                             )}
                         </div>
+
+                        {activeSuggestion && (
+                            <div className="chat-suggestion-context">
+                                <span className="analysis-status-label">
+                                    {activeSuggestion.state === 'accepted' ? 'Applied suggestion' : 'Active suggestion'}
+                                </span>
+                                <p>{activeSuggestion.reason || activeSuggestion.original_text}</p>
+                            </div>
+                        )}
 
                         <div className="chat-messages" ref={chatMessagesRef}>
                             {chatMessages.length === 0 && !isChatLoading && (
@@ -383,14 +437,14 @@ export function Sidebar({
                                 type="text"
                                 className="chat-input"
                                 placeholder={hasDocument ? "Ask about your resume..." : "Upload a resume first"}
-                                value={chatInput}
-                                onChange={(e) => setChatInput(e.target.value)}
+                                value={chatDraft}
+                                onChange={(e) => onChatDraftChange(e.target.value)}
                                 disabled={isChatLoading || !hasDocument}
                             />
                             <button
                                 type="submit"
                                 className="chat-submit"
-                                disabled={!chatInput.trim() || isChatLoading || !hasDocument}
+                                disabled={!chatDraft.trim() || isChatLoading || !hasDocument}
                             >
                                 {isChatLoading ? '...' : '→'}
                             </button>

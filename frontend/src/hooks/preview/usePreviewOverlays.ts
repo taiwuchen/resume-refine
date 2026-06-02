@@ -118,8 +118,8 @@ export function usePreviewOverlays({
         const changeByParagraphId = new Map(changes.map((change) => [change.paragraph_id, change]));
         const pendingParagraphIds = new Set(
             suggestions
-                .map((suggestion) => suggestion.paragraph_id)
-                .filter((paragraphId) => !changeByParagraphId.has(paragraphId)),
+                .filter((suggestion) => suggestion.state === 'open' || suggestion.state === 'regenerated')
+                .map((suggestion) => suggestion.paragraph_id),
         );
 
         for (const match of matches) {

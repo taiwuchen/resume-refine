@@ -13,6 +13,9 @@ GOTENBERG_TIMEOUT_SECONDS = int(os.getenv("GOTENBERG_TIMEOUT_SECONDS", "60"))
 UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
+STATE_DIR = Path(__file__).parent.parent / "state"
+STATE_DIR.mkdir(exist_ok=True)
+
 TMP_PDF_DIR = Path(__file__).parent.parent / "tmp" / "pdfs"
 TMP_PDF_DIR.mkdir(parents=True, exist_ok=True)
 

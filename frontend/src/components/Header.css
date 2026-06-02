@@ -33,6 +33,7 @@
 
 .header-actions {
     display: flex;
+    align-items: center;
     gap: var(--spacing-sm);
 }
 
@@ -88,6 +89,13 @@
     border-color: var(--accent-hover);
 }
 
+.analyzed-status {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 0.25rem;
+}
+
 .jd-section {
     margin-top: var(--spacing-md);
     max-width: 1600px;
@@ -107,6 +115,11 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
+}
+
+.jd-locked {
+    color: var(--text-muted);
+    font-size: 0.75rem;
 }
 
 .jd-toggle::before {
@@ -142,4 +155,9 @@
 .jd-input:focus {
     outline: none;
     border-color: var(--text-secondary);
+}
+
+.jd-input:read-only {
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
 }

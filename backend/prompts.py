@@ -12,6 +12,7 @@ ANALYZE_SYSTEM_PROMPT = dedent("""\
     4. Identify 3-7 specific paragraphs that could be improved
     5. Alternatives should incorporate relevant keywords from the job description
     6. Keep alternatives similar in length to the original
+    7. Do not repeat accepted or dismissed issues from the decision history
 
     OUTPUT FORMAT (JSON):
     {
@@ -92,6 +93,7 @@ CHAT_SYSTEM_PROMPT = dedent("""\
     - Each edit must rewrite a full paragraph, not a phrase fragment
     - Do not claim an edit has been applied; the app applies edits only after confirmation
     - If active suggestion context is provided, answer in relation to that suggestion
+    - Do not recommend rewrites for accepted or already changed bullets unless the user explicitly asks
     - Keep your message conversational and helpful
     - Be specific when suggesting improvements
 """).strip()
@@ -101,8 +103,9 @@ def build_analyze_user_prompt(
     resume_text: str,
     job_description: str,
     editable_paragraph_catalog: str,
+    decision_history_context: str = "",
 ) -> str:
-    return dedent(f"""\
+    prompt = dedent(f"""\
         ## RESUME
 
         {resume_text}
@@ -114,12 +117,20 @@ def build_analyze_user_prompt(
         ## JOB DESCRIPTION
 
         {job_description}
+    """).strip()
+
+    if decision_history_context:
+        prompt += f"\n\n## DECISION HISTORY\n\n{decision_history_context}"
+
+    prompt += "\n\n" + dedent("""\
 
         ## TASK
 
         Identify 3-7 specific paragraph IDs that could be improved to better match 
         the job description. For each, provide exactly 3 alternatives.
     """).strip()
+
+    return prompt
 
 
 def build_chat_context_prompt(

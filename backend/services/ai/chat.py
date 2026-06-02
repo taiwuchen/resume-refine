@@ -70,7 +70,7 @@ def build_suggestion_state_context(suggestions: list[Suggestion]) -> str:
         return ""
 
     return "\n".join(
-        f"- {suggestion.paragraph_id} | {suggestion.state} | {suggestion.severity} | {suggestion.category} | {suggestion.reason}"
+        f"- {suggestion.paragraph_id} | {suggestion.state} | {suggestion.source} | {suggestion.severity} | {suggestion.category} | {suggestion.reason}"
         for suggestion in suggestions
     )
 

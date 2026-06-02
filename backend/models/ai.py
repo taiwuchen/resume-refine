@@ -15,6 +15,7 @@ class Suggestion(BaseModel):
     reason: str = ""
     source: str = "analysis"
     parent_suggestion_id: str | None = None
+    applied_text: str | None = None
 
 
 class AnalyzeRequest(BaseModel):
@@ -22,6 +23,7 @@ class AnalyzeRequest(BaseModel):
     job_description: str
     changes: list["Change"] = Field(default_factory=list)
     generate_new_pass: bool = False
+    decision_history: list[Suggestion] = Field(default_factory=list)
 
 
 class AnalyzeResponse(BaseModel):

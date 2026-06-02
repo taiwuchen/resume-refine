@@ -13,16 +13,22 @@ VALID_CATEGORIES = {"impact", "keywords", "clarity", "length", "formatting", "re
 VALID_SEVERITIES = {"critical", "recommended", "optional"}
 
 
-def analyze_resume(doc: ParsedDocument, job_description: str) -> list[Suggestion]:
+def analyze_resume(
+    doc: ParsedDocument,
+    job_description: str,
+    decision_history: list[Suggestion] | None = None,
+) -> list[Suggestion]:
     """Analyze resume against JD and return suggestions for improvable sections."""
     editable_paragraphs = get_editable_paragraphs(doc)
     if not editable_paragraphs:
         return []
+    decisions = decision_history or []
 
     user_prompt = build_analyze_user_prompt(
         doc.full_text,
         job_description,
         build_paragraph_catalog(editable_paragraphs),
+        build_decision_history_context(decisions),
     )
 
     response = call_llm([
@@ -30,7 +36,7 @@ def analyze_resume(doc: ParsedDocument, job_description: str) -> list[Suggestion
         {"role": "user", "content": user_prompt},
     ])
 
-    return parse_analyze_response(response, doc)
+    return filter_handled_suggestions(parse_analyze_response(response, doc), decisions)
 
 
 def calculate_readiness_score(suggestions: list[Suggestion]) -> int:
@@ -41,6 +47,46 @@ def calculate_readiness_score(suggestions: list[Suggestion]) -> int:
     }
     total_penalty = sum(penalties.get(suggestion.severity, 5) for suggestion in suggestions)
     return max(0, min(100, 100 - total_penalty))
+
+
+def build_decision_history_context(decision_history: list[Suggestion]) -> str:
+    handled = [
+        suggestion
+        for suggestion in decision_history
+        if suggestion.state in {"accepted", "dismissed"}
+    ]
+    if not handled:
+        return ""
+
+    return "\n".join(
+        " | ".join([
+            f"issue_key={suggestion.issue_key or ''}",
+            f"paragraph_id={suggestion.paragraph_id}",
+            f"state={suggestion.state}",
+            f"source={suggestion.source}",
+            f"reason={suggestion.reason}",
+        ])
+        for suggestion in handled
+    )
+
+
+def filter_handled_suggestions(
+    suggestions: list[Suggestion],
+    decision_history: list[Suggestion],
+) -> list[Suggestion]:
+    handled_issue_keys = {
+        suggestion.issue_key
+        for suggestion in decision_history
+        if suggestion.issue_key and suggestion.state in {"accepted", "dismissed"}
+    }
+    if not handled_issue_keys:
+        return suggestions
+
+    return [
+        suggestion
+        for suggestion in suggestions
+        if suggestion.issue_key not in handled_issue_keys
+    ]
 
 
 def build_issue_key(paragraph_id: str, category: str, reason: str) -> str:

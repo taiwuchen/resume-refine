@@ -26,12 +26,23 @@ function AppContent() {
         readinessScore,
         analysisCacheHit,
         isAnalysisStale,
+        isJobDescriptionLocked,
+        chatDraft,
         isAnalyzing,
         isExporting,
         isChatLoading,
     } = state;
+    const activeSuggestion = suggestions.find((suggestion) => suggestion.id === activeSuggestionId) ?? null;
+    const hasActiveWork = !!document || !!jobDescription.trim();
+    const openSuggestionCount = suggestions.filter((suggestion) => (
+        suggestion.state === 'open' || suggestion.state === 'regenerated'
+    )).length;
 
     const handleFileUpload = async (file: File) => {
+        if (hasActiveWork && !window.confirm('Start a new session and upload this resume?')) {
+            return;
+        }
+
         try {
             const uploadedDocument = await uploadResume(file);
             dispatch({ type: 'uploadSuccess', document: uploadedDocument });
@@ -46,9 +57,22 @@ function AppContent() {
             return;
         }
 
+        if (generateNewPass && openSuggestionCount > 0) {
+            const shouldContinue = window.confirm('Replace unresolved open suggestions with a new pass?');
+            if (!shouldContinue) {
+                return;
+            }
+        }
+
         dispatch({ type: 'analyzeStart' });
         try {
-            const result = await analyzeResume(document.doc_id, jobDescription, changes, generateNewPass);
+            const result = await analyzeResume(
+                document.doc_id,
+                jobDescription,
+                changes,
+                generateNewPass,
+                suggestions,
+            );
             dispatch({
                 type: 'analyzeSuccess',
                 suggestions: result.suggestions,
@@ -56,11 +80,23 @@ function AppContent() {
                 resumeVersionId: result.resume_version_id,
                 readinessScore: result.readiness_score,
                 cacheHit: result.cache_hit,
+                preserveHistory: generateNewPass,
             });
         } catch (error) {
             dispatch({ type: 'analyzeFailure' });
             console.error('Analysis failed:', error);
             alert(error instanceof Error ? error.message : 'Analysis failed');
+        }
+    };
+
+    const handleNewSession = () => {
+        if (!hasActiveWork) {
+            return;
+        }
+
+        if (window.confirm('Clear this resume session and start over?')) {
+            dispatch({ type: 'resetSession' });
+            setSidebarActiveTab('suggestions');
         }
     };
 
@@ -168,12 +204,15 @@ function AppContent() {
                 onFileUpload={handleFileUpload}
                 onAnalyze={handleAnalyze}
                 onExport={handleExport}
+                onNewSession={handleNewSession}
                 jobDescription={jobDescription}
                 onJobDescriptionChange={(value) => dispatch({ type: 'setJobDescription', jobDescription: value })}
                 hasDocument={!!document}
+                hasActiveWork={hasActiveWork}
+                isJobDescriptionLocked={isJobDescriptionLocked}
                 isAnalyzing={isAnalyzing}
                 isExporting={isExporting}
-                analyzeLabel={suggestions.length > 0 || isAnalysisStale ? 'Re-analyze' : 'Analyze'}
+                isAnalyzed={!!activeAnalysisId && !isAnalysisStale}
             />
 
             <main className="main-content">
@@ -193,12 +232,14 @@ function AppContent() {
                 <Sidebar
                     activeTab={sidebarActiveTab}
                     suggestions={suggestions}
-                    changes={changes}
                     activeParagraphId={activeParagraphId}
                     activeSuggestionId={activeSuggestionId}
+                    activeSuggestion={activeSuggestion}
                     readinessScore={readinessScore}
                     analysisCacheHit={analysisCacheHit}
                     isAnalysisStale={isAnalysisStale}
+                    chatDraft={chatDraft}
+                    onChatDraftChange={(value) => dispatch({ type: 'setChatDraft', chatDraft: value })}
                     onActiveTabChange={setSidebarActiveTab}
                     onAcceptSuggestion={(suggestion, replacement) => dispatch({
                         type: 'acceptSuggestion',
@@ -208,12 +249,22 @@ function AppContent() {
                     onDismissSuggestion={(suggestionId) => dispatch({ type: 'dismissSuggestion', suggestionId })}
                     onRefreshSuggestion={(suggestion) => handleRefreshSuggestion(suggestion.id)}
                     onGenerateAnotherPass={() => handleAnalyze(true)}
-                    onSelectSuggestion={(paragraphId) => dispatch({ type: 'setActiveParagraph', paragraphId })}
+                    onSelectSuggestion={(suggestionId) => dispatch({ type: 'setActiveSuggestion', suggestionId })}
                     onAskSuggestion={(suggestion) => {
-                        dispatch({ type: 'setActiveParagraph', paragraphId: suggestion.paragraph_id });
+                        dispatch({ type: 'setActiveSuggestion', suggestionId: suggestion.id });
+                        dispatch({
+                            type: 'setChatDraft',
+                            chatDraft: suggestion.state === 'accepted'
+                                ? 'Review the applied edit.'
+                                : 'Why is this suggested?',
+                        });
                         setSidebarActiveTab('chat');
                     }}
-                    onRevertSuggestion={(paragraphId) => dispatch({ type: 'revertChange', paragraphId })}
+                    onRevertSuggestion={(suggestion) => dispatch(
+                        suggestion.state === 'dismissed'
+                            ? { type: 'reopenSuggestion', suggestionId: suggestion.id }
+                            : { type: 'revertChange', paragraphId: suggestion.paragraph_id }
+                    )}
                     isAnalyzing={isAnalyzing}
                     chatMessages={chatMessages}
                     onSendMessage={handleSendMessage}

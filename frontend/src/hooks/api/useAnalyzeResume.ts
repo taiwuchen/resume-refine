@@ -7,6 +7,7 @@ export async function analyzeResume(
     jobDescription: string,
     changes: Change[] = [],
     generateNewPass = false,
+    decisionHistory: Suggestion[] = [],
 ): Promise<AnalyzeResult> {
     const response = await fetch(`${API_BASE}/analyze`, {
         method: 'POST',
@@ -16,6 +17,7 @@ export async function analyzeResume(
             job_description: jobDescription,
             changes,
             generate_new_pass: generateNewPass,
+            decision_history: decisionHistory,
         }),
     });
 
