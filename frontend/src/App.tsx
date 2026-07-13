@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from './components/Header';
 import { DocumentPreview } from './components/documentPreview/DocumentPreview';
 import { Sidebar } from './components/Sidebar';
@@ -14,11 +14,13 @@ import './App.css';
 function AppContent() {
     const { state, dispatch } = useDocumentSession();
     const [sidebarActiveTab, setSidebarActiveTab] = useState<'suggestions' | 'chat'>('suggestions');
+    const latestAnalysisInputKeyRef = useRef('');
     const {
         document,
         jobDescription,
         suggestions,
         changes,
+        undoneChanges,
         chatMessages,
         activeParagraphId,
         activeSuggestionId,
@@ -37,6 +39,15 @@ function AppContent() {
     const openSuggestionCount = suggestions.filter((suggestion) => (
         suggestion.state === 'open' || suggestion.state === 'regenerated'
     )).length;
+    const analysisInputKey = useMemo(() => JSON.stringify({
+        docId: document?.doc_id ?? null,
+        jobDescription,
+        changes,
+    }), [changes, document?.doc_id, jobDescription]);
+
+    useEffect(() => {
+        latestAnalysisInputKeyRef.current = analysisInputKey;
+    }, [analysisInputKey]);
 
     const handleFileUpload = async (file: File) => {
         if (hasActiveWork && !window.confirm('Start a new session and upload this resume?')) {
@@ -88,6 +99,60 @@ function AppContent() {
             alert(error instanceof Error ? error.message : 'Analysis failed');
         }
     };
+
+    useEffect(() => {
+        if (!document || !jobDescription.trim() || !isAnalysisStale || isAnalyzing) {
+            return;
+        }
+
+        const requestInputKey = analysisInputKey;
+        const timerId = window.setTimeout(async () => {
+            dispatch({ type: 'analyzeStart' });
+            try {
+                const result = await analyzeResume(
+                    document.doc_id,
+                    jobDescription,
+                    changes,
+                    false,
+                    suggestions,
+                );
+                if (latestAnalysisInputKeyRef.current !== requestInputKey) {
+                    dispatch({ type: 'analyzeFailure' });
+                    return;
+                }
+
+                dispatch({
+                    type: 'analyzeSuccess',
+                    suggestions: result.suggestions,
+                    analysisId: result.analysis_id,
+                    resumeVersionId: result.resume_version_id,
+                    readinessScore: result.readiness_score,
+                    cacheHit: result.cache_hit,
+                    preserveHistory: false,
+                });
+            } catch (error) {
+                if (latestAnalysisInputKeyRef.current === requestInputKey) {
+                    dispatch({ type: 'analyzeFailure' });
+                    console.error('Auto analysis failed:', error);
+                } else {
+                    dispatch({ type: 'analyzeFailure' });
+                }
+            }
+        }, 1000);
+
+        return () => {
+            window.clearTimeout(timerId);
+        };
+    }, [
+        analysisInputKey,
+        changes,
+        document,
+        isAnalyzing,
+        isAnalysisStale,
+        jobDescription,
+        suggestions,
+        dispatch,
+    ]);
 
     const handleNewSession = () => {
         if (!hasActiveWork) {
@@ -219,6 +284,7 @@ function AppContent() {
                 <DocumentPreview
                     document={document}
                     changes={changes}
+                    undoneChanges={undoneChanges}
                     suggestions={suggestions}
                     activeParagraphId={activeParagraphId}
                     onSelectParagraph={(paragraphId) => {
@@ -227,6 +293,19 @@ function AppContent() {
                             setSidebarActiveTab('suggestions');
                         }
                     }}
+                    onEditParagraph={(paragraphId, replacement) => dispatch({
+                        type: 'editParagraph',
+                        paragraphId,
+                        replacement,
+                    })}
+                    onUndoParagraphChange={(paragraphId) => dispatch({
+                        type: 'undoParagraphChange',
+                        paragraphId,
+                    })}
+                    onRedoParagraphChange={(paragraphId) => dispatch({
+                        type: 'redoParagraphChange',
+                        paragraphId,
+                    })}
                 />
 
                 <Sidebar

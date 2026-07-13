@@ -19,8 +19,10 @@ dist/
 *.swp
 
 # Output files
+docs/
 output/
 state/
+/.agents/
 *.pdf
 
 *.docx

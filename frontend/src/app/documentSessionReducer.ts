@@ -6,6 +6,7 @@ export interface DocumentSessionState {
     jobDescription: string;
     suggestions: Suggestion[];
     changes: Change[];
+    undoneChanges: Change[];
     chatMessages: ChatMessage[];
     activeParagraphId: string | null;
     activeSuggestionId: string | null;
@@ -36,6 +37,9 @@ export type DocumentSessionAction =
     }
     | { type: 'analyzeFailure' }
     | { type: 'refreshSuggestionSuccess'; suggestionId: string; suggestion: Suggestion }
+    | { type: 'editParagraph'; paragraphId: string; replacement: string }
+    | { type: 'undoParagraphChange'; paragraphId: string }
+    | { type: 'redoParagraphChange'; paragraphId: string }
     | { type: 'acceptSuggestion'; suggestion: Suggestion; replacement: string }
     | { type: 'dismissSuggestion'; suggestionId: string }
     | { type: 'reopenSuggestion'; suggestionId: string }
@@ -60,6 +64,7 @@ export const initialDocumentSessionState: DocumentSessionState = {
     jobDescription: '',
     suggestions: [],
     changes: [],
+    undoneChanges: [],
     chatMessages: [],
     activeParagraphId: null,
     activeSuggestionId: null,
@@ -145,16 +150,25 @@ function sortSuggestionsByDocumentLocation(
         .map(({ suggestion }) => suggestion);
 }
 
+function clearUndoneChangeByParagraphId(undoneChanges: Change[], paragraphId: string): Change[] {
+    return undoneChanges.filter((change) => change.paragraph_id !== paragraphId);
+}
+
 export function documentSessionReducer(
     state: DocumentSessionState,
     action: DocumentSessionAction,
 ): DocumentSessionState {
     switch (action.type) {
-        case 'uploadSuccess':
+        case 'uploadSuccess': {
+            const firstEditableParagraph = action.document.paragraphs.find(
+                (paragraph) => paragraph.is_editable
+            );
             return {
                 ...initialDocumentSessionState,
                 document: action.document,
+                activeParagraphId: firstEditableParagraph?.paragraph_id ?? null,
             };
+        }
         case 'setJobDescription':
             if (state.isJobDescriptionLocked) {
                 return state;
@@ -222,6 +236,104 @@ export function documentSessionReducer(
                 activeSuggestionId: action.suggestion.id,
             };
         }
+        case 'editParagraph': {
+            const paragraph = state.document?.paragraphs.find(
+                (candidate) => candidate.paragraph_id === action.paragraphId
+            );
+            if (!paragraph || !paragraph.is_editable) {
+                return state;
+            }
+
+            const nextChanges = action.replacement === paragraph.text
+                ? removeChangeByParagraphId(state.changes, action.paragraphId)
+                : upsertParagraphChange(state.changes, {
+                    paragraph_id: action.paragraphId,
+                    start: paragraph.start,
+                    end: paragraph.end,
+                    original: paragraph.text,
+                    replacement: action.replacement,
+                });
+            const nextSuggestions = state.suggestions.filter((suggestion) => (
+                suggestion.paragraph_id !== action.paragraphId
+                || suggestion.state === 'accepted'
+                || suggestion.state === 'dismissed'
+            ));
+
+            return {
+                ...state,
+                changes: nextChanges,
+                undoneChanges: clearUndoneChangeByParagraphId(state.undoneChanges, action.paragraphId),
+                suggestions: nextSuggestions,
+                readinessScore: state.readinessScore === null ? null : calculateReadinessScore(nextSuggestions),
+                isAnalysisStale: !!state.jobDescription.trim(),
+                activeParagraphId: action.paragraphId,
+                activeSuggestionId: state.activeSuggestionId
+                    ? nextSuggestions.find((suggestion) => suggestion.id === state.activeSuggestionId)?.id ?? null
+                    : null,
+            };
+        }
+        case 'undoParagraphChange': {
+            const currentChange = state.changes.find((change) => change.paragraph_id === action.paragraphId);
+            if (!currentChange) {
+                return state;
+            }
+
+            const nextSuggestions = state.suggestions.map((suggestion) => (
+                suggestion.paragraph_id === action.paragraphId && suggestion.state === 'accepted'
+                    ? { ...suggestion, state: 'open' as const, applied_text: null }
+                    : suggestion
+            ));
+
+            return {
+                ...state,
+                changes: removeChangeByParagraphId(state.changes, action.paragraphId),
+                undoneChanges: upsertParagraphChange(state.undoneChanges, currentChange),
+                suggestions: nextSuggestions,
+                readinessScore: state.readinessScore === null ? null : calculateReadinessScore(nextSuggestions),
+                isAnalysisStale: !!state.jobDescription.trim(),
+                activeParagraphId: action.paragraphId,
+                activeSuggestionId: nextSuggestions.find((suggestion) => (
+                    suggestion.paragraph_id === action.paragraphId
+                    && (suggestion.state === 'open' || suggestion.state === 'regenerated')
+                ))?.id ?? state.activeSuggestionId,
+            };
+        }
+        case 'redoParagraphChange': {
+            const undoneChange = state.undoneChanges.find((change) => change.paragraph_id === action.paragraphId);
+            if (!undoneChange) {
+                return state;
+            }
+            const matchingSuggestion = state.suggestions.find((suggestion) => (
+                suggestion.paragraph_id === action.paragraphId
+                && suggestion.alternatives.includes(undoneChange.replacement)
+            ));
+            const nextSuggestions = state.suggestions.map((suggestion) => {
+                if (suggestion.id === matchingSuggestion?.id) {
+                    return {
+                        ...suggestion,
+                        state: 'accepted' as const,
+                        applied_text: undoneChange.replacement,
+                    };
+                }
+
+                if (suggestion.paragraph_id === action.paragraphId && suggestion.state === 'accepted') {
+                    return { ...suggestion, state: 'open' as const, applied_text: null };
+                }
+
+                return suggestion;
+            });
+
+            return {
+                ...state,
+                changes: upsertParagraphChange(state.changes, undoneChange),
+                undoneChanges: clearUndoneChangeByParagraphId(state.undoneChanges, action.paragraphId),
+                suggestions: nextSuggestions,
+                readinessScore: state.readinessScore === null ? null : calculateReadinessScore(nextSuggestions),
+                isAnalysisStale: !!state.jobDescription.trim(),
+                activeParagraphId: action.paragraphId,
+                activeSuggestionId: matchingSuggestion?.id ?? state.activeSuggestionId,
+            };
+        }
         case 'acceptSuggestion': {
             const existingChange = state.changes.find(
                 (change) => change.paragraph_id === action.suggestion.paragraph_id
@@ -249,6 +361,10 @@ export function documentSessionReducer(
             return {
                 ...state,
                 changes: upsertParagraphChange(state.changes, nextChange),
+                undoneChanges: clearUndoneChangeByParagraphId(
+                    state.undoneChanges,
+                    action.suggestion.paragraph_id,
+                ),
                 suggestions: nextSuggestions,
                 readinessScore: state.readinessScore === null ? null : calculateReadinessScore(nextSuggestions),
                 activeParagraphId: action.suggestion.paragraph_id,
@@ -324,6 +440,7 @@ export function documentSessionReducer(
             };
         }
         case 'revertChange': {
+            const currentChange = state.changes.find((change) => change.paragraph_id === action.paragraphId);
             const nextSuggestions = state.suggestions.map((suggestion) => (
                 suggestion.paragraph_id === action.paragraphId && suggestion.state === 'accepted'
                     ? { ...suggestion, state: 'open' as const, applied_text: null }
@@ -333,6 +450,9 @@ export function documentSessionReducer(
             return {
                 ...state,
                 changes: removeChangeByParagraphId(state.changes, action.paragraphId),
+                undoneChanges: currentChange
+                    ? upsertParagraphChange(state.undoneChanges, currentChange)
+                    : state.undoneChanges,
                 suggestions: nextSuggestions,
                 readinessScore: state.readinessScore === null ? null : calculateReadinessScore(nextSuggestions),
                 activeParagraphId: action.paragraphId,
@@ -435,6 +555,10 @@ export function documentSessionReducer(
             return {
                 ...state,
                 changes: upsertParagraphChange(state.changes, nextChange),
+                undoneChanges: clearUndoneChangeByParagraphId(
+                    state.undoneChanges,
+                    action.edit.paragraph_id,
+                ),
                 suggestions: nextSuggestions,
                 readinessScore: state.readinessScore === null ? null : calculateReadinessScore(nextSuggestions),
                 activeParagraphId: action.edit.paragraph_id,

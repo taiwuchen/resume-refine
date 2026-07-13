@@ -32,7 +32,6 @@ export function PreviewOverlays({
                                 className={[
                                     'pdf-highlight',
                                     overlay.isPending ? 'pdf-highlight-pending' : '',
-                                    overlay.isAccepted ? 'pdf-highlight-accepted' : '',
                                     overlay.isActive ? 'pdf-highlight-active' : '',
                                 ].filter(Boolean).join(' ')}
                                 style={{

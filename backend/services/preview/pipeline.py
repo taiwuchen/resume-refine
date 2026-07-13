@@ -15,6 +15,7 @@ def build_preview_source_docx(
     *,
     doc_id: str,
 ) -> Path:
+    TMP_PDF_DIR.mkdir(parents=True, exist_ok=True)
     source_docx_path = TMP_PDF_DIR / f"{doc_id}_preview.docx"
 
     if changes:

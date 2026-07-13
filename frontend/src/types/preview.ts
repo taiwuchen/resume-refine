@@ -31,6 +31,5 @@ export interface PreviewOverlay {
     pageIndex: number;
     rect: OverlayRect;
     isPending: boolean;
-    isAccepted: boolean;
     isActive: boolean;
 }

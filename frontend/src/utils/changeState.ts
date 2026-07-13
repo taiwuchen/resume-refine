@@ -1,4 +1,4 @@
-import type { Change, Suggestion } from '../types';
+import type { Change } from '../types';
 
 
 export function upsertParagraphChange(changes: Change[], nextChange: Change): Change[] {
@@ -15,21 +15,6 @@ export function upsertParagraphChange(changes: Change[], nextChange: Change): Ch
     ));
 }
 
-
-export function removeChangeAtIndex(changes: Change[], indexToRemove: number): Change[] {
-    return changes.filter((_, index) => index !== indexToRemove);
-}
-
 export function removeChangeByParagraphId(changes: Change[], paragraphId: string): Change[] {
     return changes.filter((change) => change.paragraph_id !== paragraphId);
-}
-
-export function getVisibleSuggestions(
-    suggestions: Suggestion[],
-    changes: Change[],
-): Suggestion[] {
-    const changedParagraphIds = new Set(changes.map((change) => change.paragraph_id));
-    return suggestions.filter(
-        (suggestion) => !changedParagraphIds.has(suggestion.paragraph_id)
-    );
 }

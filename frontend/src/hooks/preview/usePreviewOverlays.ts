@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
 import type {
-    Change,
     PageRenderState,
     PreviewOverlay,
     PreviewParagraphMatch,
@@ -92,7 +91,6 @@ function scrollOverlayIntoPreview(
 interface UsePreviewOverlaysOptions {
     matches: PreviewParagraphMatch[];
     pageStates: PageRenderState[];
-    changes: Change[];
     suggestions: Suggestion[];
     activeParagraphId: string | null;
     previewViewportRef: RefObject<HTMLDivElement | null>;
@@ -106,7 +104,6 @@ interface UsePreviewOverlaysResult {
 export function usePreviewOverlays({
     matches,
     pageStates,
-    changes,
     suggestions,
     activeParagraphId,
     previewViewportRef,
@@ -115,7 +112,6 @@ export function usePreviewOverlays({
 
     const overlaysByPage = useMemo(() => {
         const nextOverlaysByPage = new Map<number, PreviewOverlay[]>();
-        const changeByParagraphId = new Map(changes.map((change) => [change.paragraph_id, change]));
         const pendingParagraphIds = new Set(
             suggestions
                 .filter((suggestion) => suggestion.state === 'open' || suggestion.state === 'regenerated')
@@ -124,7 +120,6 @@ export function usePreviewOverlays({
 
         for (const match of matches) {
             const rectsByPage = buildOverlayRects(match.tokenIndexes, pageStates);
-            const isAccepted = changeByParagraphId.has(match.paragraphId);
             const isPending = pendingParagraphIds.has(match.paragraphId);
             const isActive = match.paragraphId === activeParagraphId;
 
@@ -138,7 +133,6 @@ export function usePreviewOverlays({
                         pageIndex,
                         rect,
                         isPending,
-                        isAccepted,
                         isActive,
                     });
                 });
@@ -148,7 +142,7 @@ export function usePreviewOverlays({
         }
 
         return nextOverlaysByPage;
-    }, [activeParagraphId, changes, matches, pageStates, suggestions]);
+    }, [activeParagraphId, matches, pageStates, suggestions]);
 
     const registerOverlayRef = useCallback((overlayId: string, node: HTMLButtonElement | null) => {
         if (node) {
