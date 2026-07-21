@@ -67,7 +67,7 @@ If preview rendering fails, verify that the service at `GOTENBERG_URL` is reacha
 ### Branch workflow
 
 - Use `test` for daily development, including direct commits, pushes, and merges.
-- Promote a release with a pull request from `test` to `main`.
+- Promote a release with a pull request from `test` to `main`, selecting `main` explicitly as the base branch.
 - Use a merge commit for the promotion, then fast-forward `test` to the resulting `main` commit.
 - Keep production deployments connected to `main`.
 
