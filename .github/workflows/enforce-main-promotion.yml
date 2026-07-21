@@ -1,0 +1,25 @@
+name: Enforce main promotion
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  require-test-source:
+    name: Require test source branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate pull request source
+        env:
+          BASE_REPOSITORY: ${{ github.repository }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          if [[ "$HEAD_REF" != "test" || "$HEAD_REPOSITORY" != "$BASE_REPOSITORY" ]]; then
+            echo "Only pull requests from this repository's test branch may merge into main."
+            exit 1
+          fi

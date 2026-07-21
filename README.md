@@ -64,6 +64,13 @@ Open http://localhost:5173 in your browser.
 
 If preview rendering fails, verify that the service at `GOTENBERG_URL` is reachable and that it has the fonts your resume needs. Missing fonts are the main cause of preview layout drift.
 
+### Branch workflow
+
+- Use `test` for daily development, including direct commits, pushes, and merges.
+- Promote a release with a pull request from `test` to `main`.
+- Use a merge commit for the promotion, then fast-forward `test` to the resulting `main` commit.
+- Keep production deployments connected to `main`.
+
 ## Usage
 
 1. Upload a DOCX resume
