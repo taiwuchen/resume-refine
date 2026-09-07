@@ -66,10 +66,8 @@ If preview rendering fails, verify that the service at `GOTENBERG_URL` is reacha
 
 ### Branch workflow
 
-- Use `test` for daily development, including direct commits, pushes, and merges.
-- Feature branches merged into `test` through pull requests are deleted automatically.
-- Promote a release with a pull request from `test` to `main`, selecting `main` explicitly as the base branch.
-- Use a merge commit for the promotion, then fast-forward `test` to the resulting `main` commit.
+- Use `main` as the default branch for daily development, including direct commits and pushes.
+- Optional feature branches can be merged into `main` through pull requests and are deleted automatically after merging.
 - Keep production deployments connected to `main`.
 
 ## Usage
