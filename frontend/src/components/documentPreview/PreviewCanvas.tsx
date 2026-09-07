@@ -25,19 +25,17 @@ export function PreviewCanvas({
 
     return (
         <div className="pdf-preview-stage">
-            <div className="pdf-preview-frame-wrap">
-                <div ref={pagesHostRef} className="pdf-pages-host" />
-                {(isFetching || isRendering) && (
-                    <div className="preview-status">
-                        <p>{isFetching ? 'Generating PDF preview...' : 'Rendering PDF preview...'}</p>
-                    </div>
-                )}
-                {renderError && (
-                    <div className="preview-error">
-                        <p>{renderError}</p>
-                    </div>
-                )}
-            </div>
+            <div ref={pagesHostRef} className="pdf-pages-host" />
+            {(isFetching || isRendering) && (
+                <div className="preview-status">
+                    <p>{isFetching ? 'Generating PDF preview...' : 'Rendering PDF preview...'}</p>
+                </div>
+            )}
+            {renderError && (
+                <div className="preview-error">
+                    <p>{renderError}</p>
+                </div>
+            )}
         </div>
     );
 }

@@ -31,7 +31,7 @@
 html,
 body,
 #root {
-    height: 100%;
+    min-height: 100%;
 }
 
 body {
@@ -44,7 +44,6 @@ body {
     font-size: 15px;
     line-height: 1.6;
     letter-spacing: -0.01em;
-    overflow: hidden;
 }
 
 ::-webkit-scrollbar {

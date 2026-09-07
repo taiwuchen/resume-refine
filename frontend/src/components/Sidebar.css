@@ -1,4 +1,4 @@
-.sidebar { flex: 0 0 400px; width: 400px; min-width: 0; min-height: 0; background: var(--bg-paper); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; overflow: hidden; }
+.sidebar { flex: 0 0 400px; width: 400px; min-width: 0; position: sticky; top: var(--spacing-md); height: calc(100dvh - var(--spacing-md) - var(--spacing-lg)); background: var(--bg-paper); border: 1px solid var(--border); border-radius: var(--radius-md); display: flex; flex-direction: column; overflow: hidden; }
 .sidebar-heading { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid var(--border); }
 .sidebar-heading h2 { margin: 0; font-size: 0.9rem; font-weight: 600; }
 .sidebar-heading span { color: var(--text-secondary); font-size: 0.8rem; }
@@ -16,4 +16,4 @@
 .alt-number { color: var(--text-secondary); }
 .dismiss-btn { background: none; border: 0; padding: 8px 0; font: inherit; font-size: 0.8rem; color: var(--text-secondary); text-decoration: underline; cursor: pointer; }
 .alternative-btn:disabled, .dismiss-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-@media (max-width: 1024px) { .sidebar { flex: 1 1 0; width: 100%; } }
+@media (max-width: 1024px) { .sidebar { position: static; flex: none; width: 100%; height: auto; max-height: 80dvh; } }

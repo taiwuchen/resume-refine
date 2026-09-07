@@ -24,7 +24,7 @@ export function DocumentPreview({
     activeParagraphId,
     onSelectParagraph,
 }: DocumentPreviewProps) {
-    const previewViewportRef = useRef<HTMLDivElement | null>(null);
+    const previewRootRef = useRef<HTMLDivElement | null>(null);
     const pagesHostRef = useRef<HTMLDivElement | null>(null);
     const fetchRequestIdRef = useRef(0);
     const [viewportWidth, setViewportWidth] = useState(0);
@@ -33,8 +33,8 @@ export function DocumentPreview({
     const [fetchError, setFetchError] = useState<string | null>(null);
 
     useEffect(() => {
-        const viewportElement = previewViewportRef.current;
-        if (!viewportElement) {
+        const rootElement = previewRootRef.current;
+        if (!rootElement) {
             return;
         }
 
@@ -46,8 +46,8 @@ export function DocumentPreview({
             setViewportWidth(Math.floor(entry.contentRect.width));
         });
 
-        observer.observe(viewportElement);
-        setViewportWidth(Math.floor(viewportElement.getBoundingClientRect().width));
+        observer.observe(rootElement);
+        setViewportWidth(Math.floor(rootElement.getBoundingClientRect().width));
 
         return () => {
             observer.disconnect();
@@ -113,32 +113,29 @@ export function DocumentPreview({
         pageStates,
         suggestions,
         activeParagraphId,
-        previewViewportRef,
     });
 
     const effectiveRenderError = fetchError ?? loadError ?? renderError;
     const isRendering = isLoadingDocument || isRenderingPages;
     return (
-        <div className="document-preview">
+        <div className="document-preview" ref={previewRootRef}>
             <div className="preview-header">
                 <span className="preview-title">Document Preview</span>
                 <span className="preview-hint">Select a highlight to review a suggestion</span>
             </div>
-            <div className="preview-container" ref={previewViewportRef}>
-                <PreviewCanvas
-                    hasDocument={!!parsedDocument}
-                    isFetching={isFetching}
-                    isRendering={isRendering}
-                    renderError={effectiveRenderError}
-                    pagesHostRef={pagesHostRef}
-                />
-                <PreviewOverlays
-                    pageStates={pageStates}
-                    overlaysByPage={overlaysByPage}
-                    onSelectParagraph={onSelectParagraph}
-                    registerOverlayRef={registerOverlayRef}
-                />
-            </div>
+            <PreviewCanvas
+                hasDocument={!!parsedDocument}
+                isFetching={isFetching}
+                isRendering={isRendering}
+                renderError={effectiveRenderError}
+                pagesHostRef={pagesHostRef}
+            />
+            <PreviewOverlays
+                pageStates={pageStates}
+                overlaysByPage={overlaysByPage}
+                onSelectParagraph={onSelectParagraph}
+                registerOverlayRef={registerOverlayRef}
+            />
         </div>
     );
 }

@@ -1,22 +1,15 @@
 .document-preview {
     flex: 1;
     min-width: 0;
-    min-height: 0;
-    background: var(--bg-paper);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    gap: var(--spacing-md);
 }
 
 .preview-header {
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-bottom: 1px solid var(--border-light);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex: 0 0 auto;
 }
 
 .preview-title {
@@ -32,28 +25,8 @@
     color: var(--text-muted);
 }
 
-.preview-container {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    background: var(--bg-secondary);
-    overscroll-behavior: contain;
-}
-
 .pdf-preview-stage {
-    display: flex;
-    min-height: 100%;
-    padding: 0;
-}
-
-.pdf-preview-frame-wrap {
     position: relative;
-    flex: 1;
-    min-width: 0;
-    min-height: 100%;
-    background: #d9d7d2;
-    border-radius: var(--radius-md);
-    overflow: hidden;
 }
 
 .pdf-pages-host {
@@ -61,7 +34,6 @@
     flex-direction: column;
     align-items: center;
     gap: 24px;
-    padding: 16px;
 }
 
 .pdf-page {
@@ -115,6 +87,16 @@
 
 .pdf-text-layer .markedContent {
     display: contents;
+}
+
+/* pdf.js appends this measuring canvas to body; keep it out of page flow like pdf_viewer.css does */
+.hiddenCanvasElement {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 .pdf-overlay-layer {
@@ -172,7 +154,8 @@
 .preview-status {
     position: absolute;
     inset: 0;
-    background: rgba(245, 245, 243, 0.72);
+    z-index: 3;
+    background: rgba(250, 250, 248, 0.72);
     backdrop-filter: blur(2px);
 }
 
@@ -182,15 +165,10 @@
 
 @media (max-width: 1024px) {
     .document-preview {
-        flex: 1.2 1 0;
-    }
-
-    .pdf-preview-stage {
-        padding: 0;
+        flex: none;
     }
 
     .pdf-pages-host {
-        padding: 16px;
         gap: 16px;
     }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type {
     PageRenderState,
     PreviewOverlay,
@@ -70,30 +70,11 @@ function buildOverlayRects(tokenIndexes: number[], pageStates: PageRenderState[]
     return rectsByPage;
 }
 
-function scrollOverlayIntoPreview(
-    overlayElement: HTMLButtonElement,
-    previewViewportElement: HTMLDivElement,
-) {
-    const overlayRect = overlayElement.getBoundingClientRect();
-    const viewportRect = previewViewportElement.getBoundingClientRect();
-    const nextScrollTop = previewViewportElement.scrollTop
-        + overlayRect.top
-        - viewportRect.top
-        - ((previewViewportElement.clientHeight - overlayRect.height) / 2);
-    const maxScrollTop = previewViewportElement.scrollHeight - previewViewportElement.clientHeight;
-
-    previewViewportElement.scrollTo({
-        top: Math.max(0, Math.min(nextScrollTop, maxScrollTop)),
-        behavior: 'smooth',
-    });
-}
-
 interface UsePreviewOverlaysOptions {
     matches: PreviewParagraphMatch[];
     pageStates: PageRenderState[];
     suggestions: Suggestion[];
     activeParagraphId: string | null;
-    previewViewportRef: RefObject<HTMLDivElement | null>;
 }
 
 interface UsePreviewOverlaysResult {
@@ -106,7 +87,6 @@ export function usePreviewOverlays({
     pageStates,
     suggestions,
     activeParagraphId,
-    previewViewportRef,
 }: UsePreviewOverlaysOptions): UsePreviewOverlaysResult {
     const overlayRefs = useRef(new Map<string, HTMLButtonElement>());
 
@@ -166,14 +146,10 @@ export function usePreviewOverlays({
                 continue;
             }
 
-            const overlayElement = overlayRefs.current.get(activeOverlay.id);
-            const previewViewportElement = previewViewportRef.current;
-            if (overlayElement && previewViewportElement) {
-                scrollOverlayIntoPreview(overlayElement, previewViewportElement);
-            }
+            overlayRefs.current.get(activeOverlay.id)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
             return;
         }
-    }, [activeParagraphId, overlaysByPage, previewViewportRef]);
+    }, [activeParagraphId, overlaysByPage]);
 
     return {
         overlaysByPage,

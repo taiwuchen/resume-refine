@@ -46,7 +46,7 @@ export function usePdfPages({
         const renderPages = async () => {
             try {
                 const nextPageStates: PageRenderState[] = [];
-                const availableWidth = Math.max(viewportWidth - 32, 1);
+                const availableWidth = Math.max(viewportWidth, 1);
                 const outputScale = window.devicePixelRatio || 1;
 
                 for (let pageIndex = 0; pageIndex < pdfDocument.numPages; pageIndex += 1) {
