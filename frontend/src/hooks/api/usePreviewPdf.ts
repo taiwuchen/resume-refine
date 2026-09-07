@@ -2,9 +2,10 @@ import { API_BASE } from '../../config/api';
 import type { Change } from '../../types';
 import { readErrorDetail } from './shared';
 
-export async function fetchPreviewPdf(docId: string, changes: Change[]): Promise<Blob> {
+export async function fetchPreviewPdf(docId: string, changes: Change[], signal?: AbortSignal): Promise<Blob> {
     const response = await fetch(`${API_BASE}/document/${docId}/preview-pdf`, {
         method: 'POST',
+        signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ changes }),
     });

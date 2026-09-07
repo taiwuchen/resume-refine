@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from models.preview import PreviewPdfRequest
 from repositories.document_repository import document_repository
@@ -9,7 +10,7 @@ router = APIRouter()
 
 
 @router.get("/document/{doc_id}")
-async def get_document(doc_id: str):
+def get_document(doc_id: str):
     """Serve the raw DOCX file for preview."""
     file_path = document_repository.get_file_path(doc_id)
     if not file_path or not file_path.exists():
@@ -23,7 +24,7 @@ async def get_document(doc_id: str):
 
 
 @router.post("/document/{doc_id}/preview-pdf")
-async def get_document_preview_pdf(doc_id: str, request: PreviewPdfRequest):
+def get_document_preview_pdf(doc_id: str, request: PreviewPdfRequest):
     """Serve a PDF preview of the current document state."""
     doc = document_repository.get_document(doc_id)
     if not doc:
@@ -44,6 +45,7 @@ async def get_document_preview_pdf(doc_id: str, request: PreviewPdfRequest):
 
     return FileResponse(
         path=pdf_path,
+        background=BackgroundTask(pdf_path.unlink, missing_ok=True),
         media_type="application/pdf",
         filename=f"{original_path.stem}.pdf",
     )

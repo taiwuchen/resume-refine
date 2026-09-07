@@ -4,12 +4,15 @@ An interactive, Grammarly-style resume refinement webapp that helps optimize you
 
 ## Features
 
-- **Upload Resume**: Upload your DOCX resume for analysis
-- **Job Description Context**: Paste a job description to guide improvements
-- **AI-Powered Analysis**: Click "Analyze" to get suggestions for improvable sections
-- **Inline Suggestions**: Highlighted text shows 3 alternative options on click
-- **Custom Prompts**: Select any text and ask for specific improvements via the chat sidebar
-- **Export**: Download your refined resume as DOCX with original formatting preserved
+- Upload a DOCX resume and paste a target job description.
+- Analyze the resume and review three alternatives for each suggested improvement.
+- Accept or dismiss suggestions, and undo accepted changes.
+- Preview the current resume as a PDF and export it as DOCX.
+- Edit the job description to analyze for a different job while keeping accepted edits.
+
+The app analyzes body paragraphs. Text inside tables, headers, and footers is not analyzed.
+Edited paragraphs use their existing base text style; mixed inline formatting may change.
+Progress is saved in the current browser. Uploading a replacement starts a fresh resume review.
 
 ## Quick Start
 
@@ -72,13 +75,25 @@ If preview rendering fails, verify that the service at `GOTENBERG_URL` is reacha
 
 ## Usage
 
-1. Upload a DOCX resume
-2. Paste a job description and expand the "Job Description" section
-3. Click "Analyze" to get AI suggestions
-4. Click highlighted text to see 3 improvement options
-5. Accept suggestions to apply changes
-6. Use the chat sidebar for custom improvements
-7. Click "Export" to download the refined resume
+1. Upload a DOCX resume.
+2. Paste the target job description and click **Analyze**.
+3. Select a suggestion or highlighted paragraph to review its alternatives.
+4. Choose an alternative to apply it, or dismiss the suggestion.
+5. Use **Undo last change** to reverse accepted edits.
+6. Click **Export DOCX** to download the result.
+
+Changing the job description clears the suggestions but keeps accepted edits.
+Analysis errors are shown with an option to retry through **Analyze**.
+
+## Verification
+
+```bash
+cd backend
+../.venv/bin/python -m unittest discover -s tests -v
+cd ../frontend
+npm run build
+npm run lint
+```
 
 ## Tech Stack
 

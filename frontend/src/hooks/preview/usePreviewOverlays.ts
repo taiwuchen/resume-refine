@@ -114,11 +114,13 @@ export function usePreviewOverlays({
         const nextOverlaysByPage = new Map<number, PreviewOverlay[]>();
         const pendingParagraphIds = new Set(
             suggestions
-                .filter((suggestion) => suggestion.state === 'open' || suggestion.state === 'regenerated')
+                .filter((suggestion) => suggestion.state === 'open')
                 .map((suggestion) => suggestion.paragraph_id),
         );
 
+        const suggestionParagraphIds = new Set(suggestions.map(suggestion => suggestion.paragraph_id));
         for (const match of matches) {
+            if (!suggestionParagraphIds.has(match.paragraphId)) continue;
             const rectsByPage = buildOverlayRects(match.tokenIndexes, pageStates);
             const isPending = pendingParagraphIds.has(match.paragraphId);
             const isActive = match.paragraphId === activeParagraphId;

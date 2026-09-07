@@ -1,107 +1,56 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import './Header.css';
 
 interface HeaderProps {
+    hasDocument: boolean;
+    hasAnalyzed: boolean;
+    jobDescription: string;
+    operation: 'upload' | 'analyze' | 'export' | null;
+    canUndo: boolean;
+    error: string | null;
     onFileUpload: (file: File) => void;
     onAnalyze: () => void;
     onExport: () => void;
-    onNewSession: () => void;
-    jobDescription: string;
-    onJobDescriptionChange: (jd: string) => void;
-    hasDocument: boolean;
-    hasActiveWork: boolean;
-    isJobDescriptionLocked: boolean;
-    isAnalyzing: boolean;
-    isExporting: boolean;
-    isAnalyzed: boolean;
+    onUndo: () => void;
+    onJobDescriptionChange: (value: string) => void;
 }
 
-export function Header({
-    onFileUpload,
-    onAnalyze,
-    onExport,
-    onNewSession,
-    jobDescription,
-    onJobDescriptionChange,
-    hasDocument,
-    hasActiveWork,
-    isJobDescriptionLocked,
-    isAnalyzing,
-    isExporting,
-    isAnalyzed,
-}: HeaderProps) {
-    const fileInputRef = useRef<HTMLInputElement>(null);
-    const [isJdExpanded, setIsJdExpanded] = useState(false);
-
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) onFileUpload(file);
-        e.target.value = '';
-    };
-
+export function Header(props: HeaderProps) {
+    const inputRef = useRef<HTMLInputElement>(null);
+    const busy = props.operation !== null;
     return (
         <header className="header">
             <div className="header-top">
                 <h1 className="logo">Resume Refine</h1>
                 <div className="header-actions">
-                    <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept=".docx"
-                        onChange={handleFileChange}
-                        hidden
-                    />
-                    <button
-                        className="btn btn-secondary"
-                        onClick={() => fileInputRef.current?.click()}
-                    >
-                        Upload Resume
+                    <input ref={inputRef} type="file" accept=".docx" hidden disabled={busy}
+                        aria-label="Resume DOCX file" onChange={event => {
+                            const file = event.target.files?.[0];
+                            if (file) props.onFileUpload(file);
+                            event.target.value = '';
+                        }} />
+                    <button className="btn" disabled={busy} onClick={() => inputRef.current?.click()}>
+                        {props.operation === 'upload' ? 'Uploading...' : props.hasDocument ? 'Replace resume' : 'Upload resume'}
                     </button>
-                    {isAnalyzed ? (
-                        <span className="analyzed-status">Analyzed</span>
-                    ) : (
-                        <button
-                            className="btn btn-primary"
-                            onClick={() => onAnalyze()}
-                            disabled={!hasDocument || !jobDescription.trim() || isAnalyzing}
-                        >
-                            {isAnalyzing ? 'Analyzing...' : 'Analyze'}
-                        </button>
-                    )}
-                    <button
-                        className="btn btn-success"
-                        onClick={onExport}
-                        disabled={!hasDocument || isExporting}
-                    >
-                        {isExporting ? 'Exporting...' : 'Export'}
+                    <button className="btn" disabled={busy || !props.canUndo} onClick={props.onUndo}>Undo last change</button>
+                    <button className="btn btn-success" disabled={busy || !props.hasDocument} onClick={props.onExport}>
+                        {props.operation === 'export' ? 'Exporting...' : 'Export DOCX'}
                     </button>
-                    {hasActiveWork && (
-                        <button
-                            className="btn btn-secondary"
-                            onClick={onNewSession}
-                        >
-                            New Session
-                        </button>
-                    )}
                 </div>
             </div>
-
             <div className="jd-section">
-                <button
-                    className="jd-toggle"
-                    onClick={() => setIsJdExpanded(!isJdExpanded)}
-                >
-                    Job Description {isJobDescriptionLocked && <span className="jd-locked">Locked for this session</span>} {isJdExpanded ? '▲' : '▼'}
-                </button>
-                {isJdExpanded && (
-                    <textarea
-                        className="jd-input"
-                        placeholder="Paste the job description here..."
-                        value={jobDescription}
-                        onChange={(e) => onJobDescriptionChange(e.target.value)}
-                        readOnly={isJobDescriptionLocked}
-                    />
-                )}
+                <label htmlFor="job-description">Target job description</label>
+                <div className="jd-controls">
+                    <textarea id="job-description" className="jd-input" rows={2}
+                        placeholder="Paste the job description to guide your suggestions."
+                        value={props.jobDescription} disabled={busy}
+                        onChange={event => props.onJobDescriptionChange(event.target.value)} />
+                    <button className="btn btn-primary" onClick={props.onAnalyze}
+                        disabled={busy || !props.hasDocument || !props.jobDescription.trim() || props.hasAnalyzed}>
+                        {props.operation === 'analyze' ? 'Analyzing...' : props.hasAnalyzed ? 'Analyzed' : 'Analyze'}
+                    </button>
+                </div>
+                {props.error && <p className="action-error" role="alert">{props.error}</p>}
             </div>
         </header>
     );

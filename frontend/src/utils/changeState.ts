@@ -14,7 +14,3 @@ export function upsertParagraphChange(changes: Change[], nextChange: Change): Ch
         index === existingIndex ? nextChange : change
     ));
 }
-
-export function removeChangeByParagraphId(changes: Change[], paragraphId: string): Change[] {
-    return changes.filter((change) => change.paragraph_id !== paragraphId);
-}

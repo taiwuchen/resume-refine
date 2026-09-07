@@ -1,43 +1,25 @@
-from models.document import Paragraph, ParsedDocument
-
-
-def get_paragraph_map(doc: ParsedDocument) -> dict[str, Paragraph]:
-    return {paragraph.paragraph_id: paragraph for paragraph in doc.paragraphs}
+from models.document import Change, Paragraph, ParsedDocument
 
 
 def get_editable_paragraphs(doc: ParsedDocument) -> list[Paragraph]:
     return [paragraph for paragraph in doc.paragraphs if paragraph.is_editable]
 
 
-def get_paragraph_or_none(doc: ParsedDocument, paragraph_id: str) -> Paragraph | None:
-    return get_paragraph_map(doc).get(paragraph_id)
-
-
-def validate_paragraph_selection(
-    doc: ParsedDocument,
-    paragraph_id: str,
-    start: int,
-    end: int,
-    selected_text: str,
-) -> Paragraph:
-    paragraph = get_paragraph_or_none(doc, paragraph_id)
-    if paragraph is None:
-        raise ValueError("Paragraph not found")
-
-    if not paragraph.is_editable:
-        raise ValueError("Paragraph is not editable")
-
-    if paragraph.start != start or paragraph.end != end:
-        raise ValueError("Selection must match a full paragraph")
-
-    if paragraph.text != selected_text:
-        raise ValueError("Selection text does not match the paragraph")
-
-    return paragraph
+def validate_changes(doc: ParsedDocument, changes: list[Change]) -> None:
+    paragraphs = {paragraph.paragraph_id: paragraph for paragraph in doc.paragraphs}
+    seen = set()
+    for change in changes:
+        paragraph = paragraphs.get(change.paragraph_id)
+        if paragraph is None or not paragraph.is_editable:
+            raise ValueError(f"Unknown or uneditable paragraph: {change.paragraph_id}")
+        if change.paragraph_id in seen:
+            raise ValueError(f"Duplicate change for paragraph: {change.paragraph_id}")
+        if change.start != paragraph.start or change.end != paragraph.end:
+            raise ValueError("Changes must target a full paragraph")
+        if change.original != paragraph.text:
+            raise ValueError("Change original text does not match the paragraph")
+        seen.add(change.paragraph_id)
 
 
 def build_paragraph_catalog(paragraphs: list[Paragraph]) -> str:
-    return "\n".join(
-        f"- {paragraph.paragraph_id}: {paragraph.text}"
-        for paragraph in paragraphs
-    )
+    return "\n".join(f"- {paragraph.paragraph_id}: {paragraph.text}" for paragraph in paragraphs)

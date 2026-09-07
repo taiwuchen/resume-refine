@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchPreviewPdf } from '../../hooks/api/usePreviewPdf';
 import { useParagraphMatching } from '../../hooks/preview/useParagraphMatching';
 import { usePdfDocument } from '../../hooks/preview/usePdfDocument';
@@ -12,25 +12,17 @@ import './DocumentPreview.css';
 interface DocumentPreviewProps {
     document: ParsedDocument | null;
     changes: Change[];
-    undoneChanges: Change[];
     suggestions: Suggestion[];
     activeParagraphId: string | null;
     onSelectParagraph: (paragraphId: string | null) => void;
-    onEditParagraph: (paragraphId: string, replacement: string) => void;
-    onUndoParagraphChange: (paragraphId: string) => void;
-    onRedoParagraphChange: (paragraphId: string) => void;
 }
 
 export function DocumentPreview({
     document: parsedDocument,
     changes,
-    undoneChanges,
     suggestions,
     activeParagraphId,
     onSelectParagraph,
-    onEditParagraph,
-    onUndoParagraphChange,
-    onRedoParagraphChange,
 }: DocumentPreviewProps) {
     const previewViewportRef = useRef<HTMLDivElement | null>(null);
     const pagesHostRef = useRef<HTMLDivElement | null>(null);
@@ -74,11 +66,12 @@ export function DocumentPreview({
         }
 
         let cancelled = false;
+        const controller = new AbortController();
         setIsFetching(true);
 
         const loadPreviewPdf = async () => {
             try {
-                const blob = await fetchPreviewPdf(parsedDocument.doc_id, changes);
+                const blob = await fetchPreviewPdf(parsedDocument.doc_id, changes, controller.signal);
                 if (cancelled || requestId !== fetchRequestIdRef.current) {
                     return;
                 }
@@ -99,10 +92,12 @@ export function DocumentPreview({
             }
         };
 
-        loadPreviewPdf();
+        const timer = window.setTimeout(loadPreviewPdf, 250);
 
         return () => {
             cancelled = true;
+            window.clearTimeout(timer);
+            controller.abort();
         };
     }, [changes, parsedDocument]);
 
@@ -123,60 +118,12 @@ export function DocumentPreview({
 
     const effectiveRenderError = fetchError ?? loadError ?? renderError;
     const isRendering = isLoadingDocument || isRenderingPages;
-    const activeParagraph = useMemo(() => (
-        parsedDocument?.paragraphs.find((paragraph) => paragraph.paragraph_id === activeParagraphId) ?? null
-    ), [activeParagraphId, parsedDocument]);
-    const activeParagraphText = activeParagraph
-        ? changes.find((change) => change.paragraph_id === activeParagraph.paragraph_id)?.replacement
-            ?? activeParagraph.text
-        : '';
-    const activeParagraphChange = activeParagraph
-        ? changes.find((change) => change.paragraph_id === activeParagraph.paragraph_id) ?? null
-        : null;
-    const activeParagraphRedo = activeParagraph
-        ? undoneChanges.find((change) => change.paragraph_id === activeParagraph.paragraph_id) ?? null
-        : null;
-
     return (
         <div className="document-preview">
             <div className="preview-header">
                 <span className="preview-title">Document Preview</span>
-                <span className="preview-hint">PDF layout preview with paragraph highlights</span>
+                <span className="preview-hint">Select a highlight to review a suggestion</span>
             </div>
-            {activeParagraph?.is_editable && (
-                <div className="paragraph-editor">
-                    <div className="paragraph-editor-header">
-                        <label className="paragraph-editor-label" htmlFor="active-paragraph-editor">
-                            Edit selected paragraph
-                        </label>
-                        <div className="paragraph-editor-actions">
-                            <button
-                                type="button"
-                                className="paragraph-editor-btn"
-                                onClick={() => onUndoParagraphChange(activeParagraph.paragraph_id)}
-                                disabled={!activeParagraphChange}
-                            >
-                                Undo
-                            </button>
-                            <button
-                                type="button"
-                                className="paragraph-editor-btn"
-                                onClick={() => onRedoParagraphChange(activeParagraph.paragraph_id)}
-                                disabled={!activeParagraphRedo}
-                            >
-                                Redo
-                            </button>
-                        </div>
-                    </div>
-                    <textarea
-                        id="active-paragraph-editor"
-                        className="paragraph-editor-input"
-                        value={activeParagraphText}
-                        onChange={(event) => onEditParagraph(activeParagraph.paragraph_id, event.target.value)}
-                        rows={4}
-                    />
-                </div>
-            )}
             <div className="preview-container" ref={previewViewportRef}>
                 <PreviewCanvas
                     hasDocument={!!parsedDocument}

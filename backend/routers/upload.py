@@ -1,4 +1,4 @@
-from pathlib import Path
+import uuid
 from fastapi import APIRouter, UploadFile, HTTPException
 
 from config import UPLOAD_DIR
@@ -11,10 +11,10 @@ router = APIRouter()
 
 @router.post("/upload", response_model=ParsedDocument)
 async def upload_resume(file: UploadFile):
-    if not file.filename or not file.filename.endswith(".docx"):
+    if not file.filename or not file.filename.lower().endswith(".docx"):
         raise HTTPException(400, "Only .docx files are supported")
     
-    file_path = UPLOAD_DIR / file.filename
+    file_path = UPLOAD_DIR / f"{uuid.uuid4()}.docx"
     
     content = await file.read()
     with open(file_path, "wb") as f:

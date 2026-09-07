@@ -1,4 +1,5 @@
 from pathlib import Path
+import uuid
 from shutil import copyfile
 
 from config import OUTPUT_PDF_DIR, TMP_PDF_DIR
@@ -16,7 +17,7 @@ def build_preview_source_docx(
     doc_id: str,
 ) -> Path:
     TMP_PDF_DIR.mkdir(parents=True, exist_ok=True)
-    source_docx_path = TMP_PDF_DIR / f"{doc_id}_preview.docx"
+    source_docx_path = TMP_PDF_DIR / f"{doc_id}_{uuid.uuid4()}_preview.docx"
 
     if changes:
         apply_changes_to_docx(original_path, doc, changes, source_docx_path)
@@ -39,9 +40,13 @@ def create_preview_pdf(
         changes,
         doc_id=doc_id,
     )
-    normalize_preview_docx(source_docx_path)
-
-    output_pdf_path = OUTPUT_PDF_DIR / f"{doc_id}_preview.pdf"
-    renderer = GotenbergPreviewRenderer()
-    renderer.render(source_docx_path, output_pdf_path)
-    return output_pdf_path
+    output_pdf_path = OUTPUT_PDF_DIR / f"{source_docx_path.stem}.pdf"
+    try:
+        normalize_preview_docx(source_docx_path)
+        GotenbergPreviewRenderer().render(source_docx_path, output_pdf_path)
+        return output_pdf_path
+    except Exception:
+        output_pdf_path.unlink(missing_ok=True)
+        raise
+    finally:
+        source_docx_path.unlink(missing_ok=True)

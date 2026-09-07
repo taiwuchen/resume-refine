@@ -7,6 +7,7 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 from models.document import Change, ParsedDocument
+from services.document_utils import validate_changes
 from services.docx.xml_utils import (
     clone_run_properties,
     extract_text,
@@ -34,28 +35,10 @@ def apply_changes_to_docx(
         paragraph.paragraph_id: (index, paragraph)
         for index, paragraph in enumerate(doc.paragraphs)
     }
-    seen_paragraph_ids: set[str] = set()
-
+    validate_changes(doc, changes)
     for change in changes:
-        paragraph_entry = paragraph_map.get(change.paragraph_id)
-        if paragraph_entry is None:
-            raise ValueError(f"Unknown paragraph: {change.paragraph_id}")
-
-        paragraph_index, paragraph = paragraph_entry
-        if not paragraph.is_editable:
-            raise ValueError(f"Paragraph is not editable: {change.paragraph_id}")
-
-        if change.paragraph_id in seen_paragraph_ids:
-            raise ValueError(f"Duplicate change for paragraph: {change.paragraph_id}")
-
-        if change.start != paragraph.start or change.end != paragraph.end:
-            raise ValueError("Changes must target a full paragraph")
-
-        if change.original != paragraph.text:
-            raise ValueError("Change original text does not match the paragraph")
-
+        paragraph_index, _ = paragraph_map[change.paragraph_id]
         apply_single_change(docx, paragraph_index, change.replacement)
-        seen_paragraph_ids.add(change.paragraph_id)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     docx.save(output_path)

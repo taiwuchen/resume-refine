@@ -1,0 +1,23 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - heading "Resume Refine" [level=1] [ref=e6]
+      - generic [ref=e7]:
+        - button "Upload resume" [ref=e8] [cursor=pointer]
+        - button "Undo last change" [disabled] [ref=e9]
+        - button "Export DOCX" [disabled] [ref=e10]
+    - generic [ref=e11]:
+      - text: Target job description
+      - generic [ref=e12]:
+        - textbox "Target job description" [ref=e13]:
+          - /placeholder: Paste the job description to guide your suggestions.
+        - button "Analyze" [disabled] [ref=e14]
+  - main [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: Document Preview
+        - generic [ref=e19]: Select a highlight to review a suggestion
+      - paragraph [ref=e22]: Upload a resume to see preview
+    - complementary "Resume suggestions" [ref=e23]:
+      - heading "Suggestions" [level=2] [ref=e25]
+      - status [ref=e26]: Upload a DOCX resume to get started.
