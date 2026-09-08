@@ -6,7 +6,7 @@
  * with an exported or restored session. It is sent only to this app's
  * /analyze endpoint, which forwards it to OpenRouter and never persists it.
  */
-const STORAGE_KEY = 'resume-refine.openrouter-key';
+const STORAGE_KEY = 'resumelilt.openrouter-key';
 
 export function getApiKey(): string {
     try {

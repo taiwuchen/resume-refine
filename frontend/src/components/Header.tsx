@@ -24,7 +24,7 @@ export function Header(props: HeaderProps) {
     return (
         <header className="header">
             <div className="header-top">
-                <h1 className="logo"><img className="logo-mark" src="/logo.svg" alt="" />Resume Refine</h1>
+                <h1 className="logo"><img className="logo-mark" src="/logo.svg" alt="" />ResumeLilt</h1>
                 <div className="header-actions">
                     <input ref={inputRef} type="file" accept=".docx" hidden disabled={busy}
                         aria-label="Resume DOCX file" onChange={event => {

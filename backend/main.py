@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import CORS_ALLOW_ORIGINS
 from routers import analyze, document, export, upload
 
-app = FastAPI(title="Resume Refine API", version="2.0.0")
+app = FastAPI(title="ResumeLilt API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,

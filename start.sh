@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Resume Refine - Start Script
+# ResumeLilt - Start Script
 # Starts both backend and frontend servers
 
 cd "$(dirname "$0")"
 
-echo "Starting Resume Refine..."
+echo "Starting ResumeLilt..."
 echo "Expecting Gotenberg on http://localhost:3000 for PDF previews..."
 
 # Start backend with venv

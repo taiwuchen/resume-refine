@@ -4,7 +4,7 @@ import { DocumentSessionContext } from './documentSessionShared';
 
 // v3 added the per-document access token; a restored v2 session has none
 // and every document request would fail, so the key is bumped to reset it.
-const STORAGE_KEY = 'resume-refine.document-session.v3';
+const STORAGE_KEY = 'resumelilt.document-session.v3';
 
 function loadPersistedState(): DocumentSessionState {
     try {
