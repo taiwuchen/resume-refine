@@ -104,3 +104,7 @@ npm run lint
 - **AI**: OpenRouter (OpenAI-compatible API)
 - **Document**: python-docx for DOCX parsing/export
 - **Preview Rendering**: Gotenberg (LibreOffice)
+
+## License
+
+[MIT](LICENSE) © Taiwu Chen
