@@ -1,5 +1,7 @@
 # Environment
 .env
+.env.*
+!.env.example
 venv/
 .venv/
 
@@ -18,14 +20,20 @@ dist/
 .DS_Store
 *.swp
 
-# Output files
-docs/
+# Local agent tooling
+/.agents/
+AGENTS.md
+
+# Runtime data. These directories hold uploaded resumes, generated previews,
+# and parsed resume JSON, all of which are personal data. Keep these rules and
+# the extension rules below: the extensions alone missed tmp/health-upload.json.
+uploads/
+tmp/
 output/
 state/
-/.agents/
-*.pdf
-
-*.docx
+.playwright-cli/
 job_description.txt
 
-AGENTS.md
+# Defense in depth: never commit a resume or a rendered preview from anywhere.
+*.docx
+*.pdf
