@@ -1,11 +1,11 @@
 import { API_BASE } from '../../config/api';
 import type { Change } from '../../types';
-import { readErrorDetail } from './shared';
+import { documentHeaders, readErrorDetail } from './shared';
 
-export async function exportResume(docId: string, changes: Change[]): Promise<Blob> {
+export async function exportResume(docId: string, token: string | null, changes: Change[]): Promise<Blob> {
     const response = await fetch(`${API_BASE}/export`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...documentHeaders(token) },
         body: JSON.stringify({ doc_id: docId, changes }),
     });
 

@@ -2,7 +2,12 @@ import { API_BASE } from '../../config/api';
 import type { ParsedDocument } from '../../types';
 import { readErrorDetail } from './shared';
 
-export async function uploadResume(file: File): Promise<ParsedDocument> {
+export interface UploadResult {
+    document: ParsedDocument;
+    accessToken: string;
+}
+
+export async function uploadResume(file: File): Promise<UploadResult> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -15,5 +20,6 @@ export async function uploadResume(file: File): Promise<ParsedDocument> {
         throw new Error(await readErrorDetail(response, 'Upload failed'));
     }
 
-    return response.json();
+    const body = await response.json();
+    return { document: body.document, accessToken: body.access_token };
 }

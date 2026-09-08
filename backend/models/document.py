@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from config import MAX_REPLACEMENT_CHARS
 
 
 class PositionMapping(BaseModel):
@@ -42,4 +44,13 @@ class Change(BaseModel):
     start: int
     end: int
     original: str
-    replacement: str
+    # Bounded: this text is rewritten into the DOCX and rendered to PDF, so an
+    # unbounded value is a cheap way to make both expensive.
+    replacement: str = Field(max_length=MAX_REPLACEMENT_CHARS)
+
+
+class UploadResponse(BaseModel):
+    document: ParsedDocument
+    # Returned once. The client must send it back as X-Document-Token to read,
+    # analyze, preview, or export this document.
+    access_token: str

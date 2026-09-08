@@ -1,5 +1,5 @@
 .header { background: var(--bg-paper); padding: 20px 24px; border-bottom: 1px solid var(--border); }
-.header-top, .jd-section { max-width: 1552px; margin: 0 auto; }
+.header-top, .jd-section, .key-section { max-width: 1552px; margin: 0 auto; }
 .header-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 600; margin: 0; letter-spacing: -0.02em; }
 .logo-mark { height: 26px; width: auto; }
@@ -8,6 +8,11 @@
 .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .btn:hover:not(:disabled) { border-color: var(--text-primary); }
 .btn-primary, .btn-success { background: var(--text-primary); color: var(--bg-paper); border-color: var(--text-primary); }
+.key-section { margin-top: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.key-section label { font-size: 0.8rem; font-weight: 500; white-space: nowrap; }
+.key-input { width: 260px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-paper); color: var(--text-primary); font: inherit; font-size: 0.85rem; }
+.key-hint { font-size: 0.75rem; color: var(--text-secondary, #6b7280); }
+.key-hint a { color: inherit; }
 .jd-section { margin-top: 18px; }
 .jd-section label { font-size: 0.8rem; font-weight: 500; }
 .jd-controls { display: flex; align-items: stretch; gap: 12px; margin-top: 6px; }
@@ -17,5 +22,7 @@
     .header { padding: 16px; }
     .header-top { align-items: flex-start; flex-direction: column; }
     .header-actions { width: 100%; }
+    .key-section { align-items: flex-start; flex-direction: column; gap: 6px; }
+    .key-input { width: 100%; }
     .btn { padding: 9px 10px; font-size: 0.8rem; }
 }

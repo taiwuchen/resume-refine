@@ -1,21 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import upload, analyze, export, document
+from config import CORS_ALLOW_ORIGINS
+from routers import analyze, document, export, upload
 
 app = FastAPI(title="Resume Refine API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ALLOW_ORIGINS,
+    # Requests carry the document token and the caller's API key in headers,
+    # not cookies, so the browser never needs to attach credentials.
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "X-Document-Token", "X-OpenRouter-Key"],
 )
 
 app.include_router(upload.router, prefix="/api", tags=["upload"])

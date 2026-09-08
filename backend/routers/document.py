@@ -1,21 +1,23 @@
-from fastapi import APIRouter, HTTPException
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from models.preview import PreviewPdfRequest
-from repositories.document_repository import document_repository
+from routers.dependencies import document_token, require_document, require_document_file
 from services.preview.pipeline import create_preview_pdf
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/document/{doc_id}")
-def get_document(doc_id: str):
+def get_document(doc_id: str, token: str = Depends(document_token)):
     """Serve the raw DOCX file for preview."""
-    file_path = document_repository.get_file_path(doc_id)
-    if not file_path or not file_path.exists():
-        raise HTTPException(404, "Document not found")
-    
+    file_path = require_document_file(doc_id, token)
+
     return FileResponse(
         path=file_path,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -24,24 +26,27 @@ def get_document(doc_id: str):
 
 
 @router.post("/document/{doc_id}/preview-pdf")
-def get_document_preview_pdf(doc_id: str, request: PreviewPdfRequest):
+async def get_document_preview_pdf(
+    doc_id: str,
+    request: PreviewPdfRequest,
+    token: str = Depends(document_token),
+):
     """Serve a PDF preview of the current document state."""
-    doc = document_repository.get_document(doc_id)
-    if not doc:
-        raise HTTPException(404, "Document not found")
-
-    original_path = document_repository.get_file_path(doc_id)
-    if not original_path or not original_path.exists():
-        raise HTTPException(404, "Original file not found")
+    doc = require_document(doc_id, token)
+    original_path = require_document_file(doc_id, token)
 
     try:
-        pdf_path = create_preview_pdf(original_path, doc, request.changes, doc_id=doc_id)
+        # Rendering shells out to LibreOffice and blocks; keep it off the loop.
+        pdf_path = await run_in_threadpool(
+            create_preview_pdf, original_path, doc, request.changes, doc_id=doc_id
+        )
     except ValueError as error:
-        raise HTTPException(400, f"Invalid preview change set: {error}")
-    except RuntimeError as error:
-        raise HTTPException(503, str(error))
+        raise HTTPException(400, f"Invalid preview change set: {error}") from error
     except Exception as error:
-        raise HTTPException(500, f"Failed to generate PDF preview: {error}")
+        # Renderer errors carry the internal Gotenberg URL and its response
+        # body, so they are logged rather than returned.
+        logger.warning("Preview rendering failed: %s: %s", type(error).__name__, error)
+        raise HTTPException(503, "Preview is unavailable. Please try again.") from error
 
     return FileResponse(
         path=pdf_path,

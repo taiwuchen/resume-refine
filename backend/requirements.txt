@@ -1,8 +1,13 @@
-fastapi==0.115.0
+fastapi==0.141.1
+# Pinned explicitly: FastAPI's own floor allows older Starlette releases that
+# carry multipart denial-of-service advisories (GHSA-f96h-pmfr-66vw,
+# GHSA-2c2j-9gv5-cj73, GHSA-82w8-qh3p-5jfq).
+starlette==1.6.0
 uvicorn==0.30.0
-python-multipart==0.0.9
+# < 0.0.30 is reachable from /api/upload before any DOCX validation runs.
+python-multipart==0.0.32
 python-docx==1.1.2
 openai==1.56.0
 python-dotenv==1.0.1
 pydantic==2.9.0
-requests==2.32.3
+requests==2.34.2

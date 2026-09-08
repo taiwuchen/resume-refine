@@ -9,6 +9,9 @@ interface UndoEntry {
 
 export interface DocumentSessionState {
     document: ParsedDocument | null;
+    /** Proves this browser uploaded the document. Without it the API returns
+     *  404 for every document route. */
+    accessToken: string | null;
     jobDescription: string;
     suggestions: Suggestion[];
     changes: Change[];
@@ -19,7 +22,7 @@ export interface DocumentSessionState {
 }
 
 export type DocumentSessionAction =
-    | { type: 'uploadSuccess'; document: ParsedDocument }
+    | { type: 'uploadSuccess'; document: ParsedDocument; accessToken: string }
     | { type: 'setJobDescription'; jobDescription: string }
     | { type: 'analyzeSuccess'; result: AnalyzeResult; revision: number }
     | { type: 'acceptSuggestion'; suggestionId: string; replacement: string }
@@ -29,6 +32,7 @@ export type DocumentSessionAction =
 
 export const initialDocumentSessionState: DocumentSessionState = {
     document: null,
+    accessToken: null,
     jobDescription: '',
     suggestions: [],
     changes: [],
@@ -42,6 +46,7 @@ export function documentSessionReducer(state: DocumentSessionState, action: Docu
     switch (action.type) {
         case 'uploadSuccess':
             return { ...initialDocumentSessionState, document: action.document,
+                accessToken: action.accessToken,
                 jobDescription: state.jobDescription, revision: state.revision + 1 };
         case 'setJobDescription':
             return { ...state, jobDescription: action.jobDescription, suggestions: [],

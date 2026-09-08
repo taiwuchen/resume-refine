@@ -11,6 +11,7 @@ import './DocumentPreview.css';
 
 interface DocumentPreviewProps {
     document: ParsedDocument | null;
+    accessToken: string | null;
     changes: Change[];
     suggestions: Suggestion[];
     activeParagraphId: string | null;
@@ -19,6 +20,7 @@ interface DocumentPreviewProps {
 
 export function DocumentPreview({
     document: parsedDocument,
+    accessToken,
     changes,
     suggestions,
     activeParagraphId,
@@ -71,7 +73,7 @@ export function DocumentPreview({
 
         const loadPreviewPdf = async () => {
             try {
-                const blob = await fetchPreviewPdf(parsedDocument.doc_id, changes, controller.signal);
+                const blob = await fetchPreviewPdf(parsedDocument.doc_id, accessToken, changes, controller.signal);
                 if (cancelled || requestId !== fetchRequestIdRef.current) {
                     return;
                 }
@@ -99,7 +101,7 @@ export function DocumentPreview({
             window.clearTimeout(timer);
             controller.abort();
         };
-    }, [changes, parsedDocument]);
+    }, [accessToken, changes, parsedDocument]);
 
     const { pdfDocument, isLoadingDocument, loadError } = usePdfDocument(pdfBlob);
     const { pageStates, isRenderingPages, renderError } = usePdfPages({

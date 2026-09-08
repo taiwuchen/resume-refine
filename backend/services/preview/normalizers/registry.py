@@ -26,7 +26,10 @@ def normalize_preview_docx(docx_path: Path) -> int:
         stats=PreviewNormalizationStats(),
     )
 
-    for paragraph in list(doc.paragraphs):
+    # Paragraphs are identified by index in logs. Their text is resume
+    # content -- contact details and employment history -- and must not
+    # reach the log stream.
+    for index, paragraph in enumerate(doc.paragraphs):
         if not paragraph.text.strip():
             continue
 
@@ -35,9 +38,9 @@ def normalize_preview_docx(docx_path: Path) -> int:
                 candidate = rule.match(paragraph, context)
             except Exception:
                 logger.exception(
-                    "Header row matcher %s failed for paragraph: %r",
+                    "Header row matcher %s failed at paragraph %s",
                     rule.rule_name,
-                    paragraph.text[:160],
+                    index,
                 )
                 continue
 
@@ -48,16 +51,15 @@ def normalize_preview_docx(docx_path: Path) -> int:
                 rule.transform(paragraph, candidate, context)
                 context.stats.record(rule.rule_name)
                 logger.debug(
-                    "Preview normalized header row via %s: left=%r right=%r",
+                    "Preview normalized header row at paragraph %s via %s",
+                    index,
                     candidate.rule_name,
-                    candidate.left_text,
-                    candidate.right_text,
                 )
             except Exception:
                 logger.exception(
-                    "Skipping preview normalization for paragraph via %s: %r",
+                    "Skipping preview normalization at paragraph %s via %s",
+                    index,
                     candidate.rule_name,
-                    paragraph.text[:160],
                 )
 
             break

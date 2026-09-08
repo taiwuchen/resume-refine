@@ -15,6 +15,17 @@ function ensurePdfWorker() {
     workerConfigured = true;
 }
 
+/**
+ * A document and the task that produced it.
+ *
+ * pdf.js 6 removed PDFDocumentProxy.destroy(); tearing down the loading task
+ * is what releases the document and its worker, so the two are kept together.
+ */
+interface LoadedPdf {
+    document: PDFDocumentProxy;
+    task: PDFDocumentLoadingTask;
+}
+
 interface UsePdfDocumentResult {
     pdfDocument: PDFDocumentProxy | null;
     isLoadingDocument: boolean;
@@ -22,18 +33,17 @@ interface UsePdfDocumentResult {
 }
 
 export function usePdfDocument(pdfBlob: Blob | null): UsePdfDocumentResult {
-    const [pdfDocument, setPdfDocument] = useState<PDFDocumentProxy | null>(null);
+    const [loaded, setLoaded] = useState<LoadedPdf | null>(null);
     const [isLoadingDocument, setIsLoadingDocument] = useState(false);
     const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;
-        let loadingTask: PDFDocumentLoadingTask | null = null;
-        let nextDocument: PDFDocumentProxy | null = null;
+        let nextLoaded: LoadedPdf | null = null;
 
         if (!pdfBlob) {
-            setPdfDocument((currentDocument) => {
-                currentDocument?.destroy();
+            setLoaded((current) => {
+                current?.task.destroy();
                 return null;
             });
             setIsLoadingDocument(false);
@@ -52,16 +62,17 @@ export function usePdfDocument(pdfBlob: Blob | null): UsePdfDocumentResult {
                     return;
                 }
 
-                loadingTask = getDocument({ data: new Uint8Array(buffer) });
-                nextDocument = await loadingTask.promise;
+                const task = getDocument({ data: new Uint8Array(buffer) });
+                const document = await task.promise;
+                nextLoaded = { document, task };
 
                 if (cancelled) {
                     return;
                 }
 
-                setPdfDocument((currentDocument) => {
-                    currentDocument?.destroy();
-                    return nextDocument;
+                setLoaded((current) => {
+                    current?.task.destroy();
+                    return nextLoaded;
                 });
             } catch (error) {
                 if (cancelled) {
@@ -69,8 +80,8 @@ export function usePdfDocument(pdfBlob: Blob | null): UsePdfDocumentResult {
                 }
 
                 console.error('PDF preview render failed:', error);
-                setPdfDocument((currentDocument) => {
-                    currentDocument?.destroy();
+                setLoaded((current) => {
+                    current?.task.destroy();
                     return null;
                 });
                 setLoadError(error instanceof Error ? error.message : 'PDF preview render failed');
@@ -85,13 +96,12 @@ export function usePdfDocument(pdfBlob: Blob | null): UsePdfDocumentResult {
 
         return () => {
             cancelled = true;
-            loadingTask?.destroy();
-            nextDocument?.destroy();
+            nextLoaded?.task.destroy();
         };
     }, [pdfBlob]);
 
     return {
-        pdfDocument,
+        pdfDocument: loaded?.document ?? null,
         isLoadingDocument,
         loadError,
     };

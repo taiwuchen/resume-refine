@@ -12,16 +12,19 @@ class InvalidAnalysisResponse(ValueError):
     pass
 
 
-def analyze_resume(doc: ParsedDocument, job_description: str) -> list[Suggestion]:
+def analyze_resume(doc: ParsedDocument, job_description: str, api_key: str) -> list[Suggestion]:
     paragraphs = get_editable_paragraphs(doc)
     if not paragraphs:
         raise ValueError("No editable paragraphs were found in this resume.")
-    response = call_llm([
-        {"role": "system", "content": ANALYZE_SYSTEM_PROMPT},
-        {"role": "user", "content": build_analyze_user_prompt(
-            doc.full_text, job_description, build_paragraph_catalog(paragraphs),
-        )},
-    ])
+    response = call_llm(
+        [
+            {"role": "system", "content": ANALYZE_SYSTEM_PROMPT},
+            {"role": "user", "content": build_analyze_user_prompt(
+                doc.full_text, job_description, build_paragraph_catalog(paragraphs),
+            )},
+        ],
+        api_key,
+    )
     return parse_analyze_response(response, doc)
 
 

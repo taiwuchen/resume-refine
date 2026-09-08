@@ -6,6 +6,7 @@ An interactive, Grammarly-style resume refinement webapp that helps optimize you
 
 ## Features
 
+- Bring your own OpenRouter API key; it stays in your browser.
 - Upload a DOCX resume and paste a target job description.
 - Analyze the resume and review three alternatives for each suggested improvement.
 - Accept or dismiss suggestions, and undo accepted changes.
@@ -21,7 +22,7 @@ Progress is saved in the current browser. Uploading a replacement starts a fresh
 ### Prerequisites
 - Node.js 20+ or 22+
 - Python 3.9+
-- OpenRouter API key
+- An OpenRouter API key (entered in the app, not the server)
 - Docker, or access to a running Gotenberg service
 
 ### Setup
@@ -30,8 +31,9 @@ Progress is saved in the current browser. Uploading a replacement starts a fresh
 2. Set up environment:
    ```bash
    cp .env.example .env
-   # Add your OPENROUTER_API_KEY to .env
    ```
+   No key is needed in `.env`. You enter your OpenRouter key in the app, and
+   the backend forwards it to OpenRouter without storing it.
 
 3. Start Gotenberg for DOCX to PDF preview generation:
    ```bash
@@ -77,12 +79,14 @@ If preview rendering fails, verify that the service at `GOTENBERG_URL` is reacha
 
 ## Usage
 
-1. Upload a DOCX resume.
-2. Paste the target job description and click **Analyze**.
-3. Select a suggestion or highlighted paragraph to review its alternatives.
-4. Choose an alternative to apply it, or dismiss the suggestion.
-5. Use **Undo last change** to reverse accepted edits.
-6. Click **Export DOCX** to download the result.
+1. Paste your OpenRouter API key into the field in the header. It is kept in
+   this browser's local storage and sent only with your analysis requests.
+2. Upload a DOCX resume.
+3. Paste the target job description and click **Analyze**.
+4. Select a suggestion or highlighted paragraph to review its alternatives.
+5. Choose an alternative to apply it, or dismiss the suggestion.
+6. Use **Undo last change** to reverse accepted edits.
+7. Click **Export DOCX** to download the result.
 
 Changing the job description clears the suggestions but keeps accepted edits.
 Analysis errors are shown with an option to retry through **Analyze**.
@@ -96,6 +100,21 @@ cd ../frontend
 npm run build
 npm run lint
 ```
+
+## Deploying
+
+This runs single-process by design. Before putting it on the public internet:
+
+- Set `CORS_ALLOW_ORIGINS` to your real frontend origin and `VITE_API_BASE` to
+  the HTTPS backend URL. The frontend's default guess is plain HTTP and will be
+  blocked as mixed content.
+- Leave `ALLOW_SERVER_API_KEY` off so callers must supply their own key.
+- Put a rate limit in front of `/api/upload` and the preview route. Uploads are
+  anonymous, and PDF rendering is the expensive path.
+- Uploaded resumes and their metadata are stored on local disk and scoped to a
+  per-document token issued at upload. Running more than one worker or instance
+  against the same directory will let one process overwrite another's records;
+  a multi-instance deployment needs shared storage instead.
 
 ## Tech Stack
 

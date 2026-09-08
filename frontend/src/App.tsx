@@ -25,7 +25,7 @@ function AppContent() {
                 error={actions.error}
             />
             <main className="main-content">
-                <DocumentPreview document={state.document} changes={state.changes}
+                <DocumentPreview document={state.document} accessToken={state.accessToken} changes={state.changes}
                     suggestions={state.suggestions} activeParagraphId={state.activeParagraphId}
                     onSelectParagraph={paragraphId => dispatch({ type: 'setActiveParagraph', paragraphId })} />
                 <Sidebar suggestions={state.suggestions} hasDocument={!!state.document}

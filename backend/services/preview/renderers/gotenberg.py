@@ -31,14 +31,15 @@ class GotenbergPreviewRenderer(PreviewRenderer):
                 f"PDF preview generation timed out after {GOTENBERG_TIMEOUT_SECONDS}s"
             ) from error
         except requests.RequestException as error:
+            # The URL is deliberately omitted: it is an internal address and
+            # may carry credentials.
             raise RuntimeError(
-                f"PDF preview generation failed: could not reach Gotenberg at {GOTENBERG_URL}"
+                "PDF preview generation failed: renderer unreachable"
             ) from error
 
         if not response.ok:
-            detail = response.text.strip() or response.reason or "unknown conversion error"
             raise RuntimeError(
-                f"PDF preview generation failed: Gotenberg returned {response.status_code}: {detail[:300]}"
+                f"PDF preview generation failed: renderer returned {response.status_code}"
             )
 
         if not response.content:

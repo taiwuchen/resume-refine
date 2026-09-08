@@ -28,15 +28,15 @@ export function useResumeActions() {
     function upload(file: File) {
         if (state.changes.length && !window.confirm('Replace this resume? Export first to keep your changes.')) return;
         return run('upload', async () => {
-            const document = await uploadResume(file);
-            dispatch({ type: 'uploadSuccess', document });
+            const { document, accessToken } = await uploadResume(file);
+            dispatch({ type: 'uploadSuccess', document, accessToken });
         });
     }
 
     function analyze() {
         if (!state.document || !state.jobDescription.trim() || state.hasAnalyzed) return;
         return run('analyze', async () => {
-            const result = await analyzeResume(state.document!.doc_id, state.jobDescription, state.changes);
+            const result = await analyzeResume(state.document!.doc_id, state.accessToken, state.jobDescription, state.changes);
             dispatch({ type: 'analyzeSuccess', result, revision: state.revision });
         });
     }
@@ -44,7 +44,7 @@ export function useResumeActions() {
     function download() {
         if (!state.document) return;
         return run('export', async () => {
-            const blob = await exportResume(state.document!.doc_id, state.changes);
+            const blob = await exportResume(state.document!.doc_id, state.accessToken, state.changes);
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
             anchor.href = url;

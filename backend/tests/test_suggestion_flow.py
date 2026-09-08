@@ -70,9 +70,12 @@ class SuggestionFlowTests(unittest.TestCase):
 
     def test_uploads_with_identical_names_are_isolated(self):
         stored = {}
-        def store(doc, path):
+
+        def store(doc, path, token):
             stored[doc.doc_id] = path
-        with patch('routers.upload.UPLOAD_DIR', self.root), patch('routers.upload.document_repository.store_document', side_effect=store):
+
+        with patch('routers.upload.UPLOAD_DIR', self.root), \
+             patch('routers.upload.document_repository.store_document', side_effect=store):
             first = self.client.post('/api/upload', files={'file': ('resume.docx', self.source.read_bytes())})
             document = Document()
             document.add_paragraph('A different resume.')
@@ -81,23 +84,199 @@ class SuggestionFlowTests(unittest.TestCase):
             second = self.client.post('/api/upload', files={'file': ('resume.docx', data.getvalue())})
         self.assertEqual(first.status_code, 200)
         self.assertEqual(second.status_code, 200)
-        first_path = stored[first.json()['doc_id']]
-        second_path = stored[second.json()['doc_id']]
+        first_path = stored[first.json()['document']['doc_id']]
+        second_path = stored[second.json()['document']['doc_id']]
         self.assertNotEqual(first_path, second_path)
         self.assertEqual(Document(first_path).paragraphs[0].text, self.doc.paragraphs[0].text)
         self.assertEqual(Document(second_path).paragraphs[0].text, 'A different resume.')
 
     def test_analysis_failure_is_not_a_successful_empty_result(self):
-        with patch('routers.analyze.document_repository.get_document', return_value=self.doc), \
-             patch('routers.analyze.OPENROUTER_API_KEY', 'test'), \
+        with patch('routers.dependencies.document_repository.get_document', return_value=self.doc), \
              patch('services.ai.analyzer.call_llm', return_value='invalid'):
-            response = self.client.post('/api/analyze', json={'doc_id': self.doc.doc_id, 'job_description': 'Reporting engineer'})
+            response = self.client.post(
+                '/api/analyze',
+                json={'doc_id': self.doc.doc_id, 'job_description': 'Reporting engineer'},
+                headers={'X-Document-Token': 'token', 'X-OpenRouter-Key': 'sk-test'},
+            )
         self.assertEqual(response.status_code, 502)
         self.assertIn('try again', response.json()['detail'])
 
     def test_removed_endpoints_are_unavailable(self):
         for endpoint in ['/api/chat', '/api/suggest']:
             self.assertEqual(self.client.post(endpoint, json={}).status_code, 404)
+
+
+class UploadLimitTests(unittest.TestCase):
+    """Uploads are anonymous, so every limit here is what stands between one
+    request and an out-of-memory instance."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.client = TestClient(app)
+
+    def _docx_bytes(self, text='Resume line.'):
+        document = Document()
+        document.add_paragraph(text)
+        data = io.BytesIO()
+        document.save(data)
+        return data.getvalue()
+
+    def _bomb_bytes(self):
+        """A small archive whose document.xml expands enormously."""
+        import zipfile
+
+        base = io.BytesIO(self._docx_bytes())
+        with zipfile.ZipFile(base) as source:
+            items = {name: source.read(name) for name in source.namelist()}
+
+        body = b'<w:p><w:r><w:t>' + b'A' * 200 + b'</w:t></w:r></w:p>'
+        items['word/document.xml'] = (
+            b'<?xml version="1.0"?><w:document '
+            b'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'
+            + body * 20_000
+            + b'</w:body></w:document>'
+        )
+
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as target:
+            for name, payload in items.items():
+                target.writestr(name, payload)
+        return out.getvalue()
+
+    def test_upload_over_the_size_limit_is_rejected(self):
+        with patch('routers.upload.MAX_UPLOAD_BYTES', 1024), patch('routers.upload.UPLOAD_DIR', self.root):
+            response = self.client.post(
+                '/api/upload',
+                files={'file': ('resume.docx', b'x' * 8192)},
+            )
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(list(self.root.iterdir()), [], 'oversized upload must not be left on disk')
+
+    def test_decompression_bomb_is_rejected_before_parsing(self):
+        bomb = self._bomb_bytes()
+        self.assertLess(len(bomb), 200_000, 'bomb should be small on the wire')
+
+        with patch('services.docx_safety.MAX_EXPANDED_BYTES', 1_000_000), \
+             patch('routers.upload.UPLOAD_DIR', self.root):
+            response = self.client.post('/api/upload', files={'file': ('resume.docx', bomb)})
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(list(self.root.iterdir()), [], 'rejected upload must not be left on disk')
+
+    def test_non_docx_archive_is_rejected(self):
+        with patch('routers.upload.UPLOAD_DIR', self.root):
+            response = self.client.post('/api/upload', files={'file': ('resume.docx', b'not a zip at all')})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(list(self.root.iterdir()), [])
+
+
+class DocumentAccessTests(unittest.TestCase):
+    """A doc_id alone must not grant access to someone else's resume."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.source = self.root / 'resume.docx'
+        document = Document()
+        document.add_paragraph('Built reporting tools for the operations team.')
+        document.save(self.source)
+        self.client = TestClient(app)
+
+    def _upload(self):
+        with patch('routers.upload.UPLOAD_DIR', self.root):
+            response = self.client.post(
+                '/api/upload', files={'file': ('resume.docx', self.source.read_bytes())}
+            )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        return body['document']['doc_id'], body['access_token']
+
+    def test_upload_issues_an_access_token(self):
+        doc_id, token = self._upload()
+        self.assertTrue(token)
+        self.assertNotEqual(token, doc_id)
+
+    def test_document_requires_the_matching_token(self):
+        doc_id, token = self._upload()
+
+        self.assertEqual(self.client.get(f'/api/document/{doc_id}').status_code, 404)
+        self.assertEqual(
+            self.client.get(f'/api/document/{doc_id}', headers={'X-Document-Token': 'wrong'}).status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.get(f'/api/document/{doc_id}', headers={'X-Document-Token': token}).status_code,
+            200,
+        )
+
+    def test_export_requires_the_matching_token(self):
+        doc_id, token = self._upload()
+        payload = {'doc_id': doc_id, 'changes': []}
+
+        self.assertEqual(
+            self.client.post('/api/export', json=payload, headers={'X-Document-Token': 'wrong'}).status_code,
+            404,
+        )
+        self.assertEqual(
+            self.client.post('/api/export', json=payload, headers={'X-Document-Token': token}).status_code,
+            200,
+        )
+
+
+class ApiKeyTests(unittest.TestCase):
+    def setUp(self):
+        self.client = TestClient(app)
+        document = Document()
+        document.add_paragraph('Built reporting tools for the operations team.')
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        source = Path(self.temp.name) / 'resume.docx'
+        document.save(source)
+        self.doc = parse_docx(source)
+
+    def test_analysis_without_a_caller_key_is_refused(self):
+        """The server key must not fund anonymous callers."""
+        with patch('routers.dependencies.document_repository.get_document', return_value=self.doc), \
+             patch('services.ai.llm.ALLOW_SERVER_API_KEY', False), \
+             patch('services.ai.llm.OPENROUTER_API_KEY', 'server-key'):
+            response = self.client.post(
+                '/api/analyze',
+                json={'doc_id': self.doc.doc_id, 'job_description': 'Reporting engineer'},
+                headers={'X-Document-Token': 'token'},
+            )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn('API key', response.json()['detail'])
+
+    def test_caller_key_is_used_and_not_echoed(self):
+        seen = {}
+
+        def fake_call(messages, api_key):
+            seen['key'] = api_key
+            return '{"suggestions":[]}'
+
+        with patch('routers.dependencies.document_repository.get_document', return_value=self.doc), \
+             patch('services.ai.analyzer.call_llm', side_effect=fake_call):
+            response = self.client.post(
+                '/api/analyze',
+                json={'doc_id': self.doc.doc_id, 'job_description': 'Reporting engineer'},
+                headers={'X-Document-Token': 'token', 'X-OpenRouter-Key': 'sk-caller'},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(seen['key'], 'sk-caller')
+        self.assertNotIn('sk-caller', response.text)
+
+    def test_job_description_over_the_limit_is_rejected(self):
+        with patch('routers.dependencies.document_repository.get_document', return_value=self.doc):
+            response = self.client.post(
+                '/api/analyze',
+                json={'doc_id': self.doc.doc_id, 'job_description': 'x' * 200_000},
+                headers={'X-Document-Token': 'token', 'X-OpenRouter-Key': 'sk-caller'},
+            )
+        self.assertEqual(response.status_code, 422)
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { getApiKey, setApiKey } from '../config/apiKey';
 import './Header.css';
 
 interface HeaderProps {
@@ -17,7 +18,9 @@ interface HeaderProps {
 
 export function Header(props: HeaderProps) {
     const inputRef = useRef<HTMLInputElement>(null);
+    const [apiKey, setApiKeyState] = useState(getApiKey);
     const busy = props.operation !== null;
+    const hasApiKey = apiKey.trim().length > 0;
     return (
         <header className="header">
             <div className="header-top">
@@ -38,6 +41,20 @@ export function Header(props: HeaderProps) {
                     </button>
                 </div>
             </div>
+            <div className="key-section">
+                <label htmlFor="openrouter-key">OpenRouter API key</label>
+                <input id="openrouter-key" className="key-input" type="password"
+                    autoComplete="off" spellCheck={false} placeholder="sk-or-v1-..."
+                    value={apiKey} disabled={busy}
+                    onChange={event => {
+                        setApiKeyState(event.target.value);
+                        setApiKey(event.target.value);
+                    }} />
+                <span className="key-hint">
+                    Stays in this browser and is sent only to run your analysis.{' '}
+                    <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer noopener">Get a key</a>
+                </span>
+            </div>
             <div className="jd-section">
                 <label htmlFor="job-description">Target job description</label>
                 <div className="jd-controls">
@@ -46,7 +63,8 @@ export function Header(props: HeaderProps) {
                         value={props.jobDescription} disabled={busy}
                         onChange={event => props.onJobDescriptionChange(event.target.value)} />
                     <button className="btn btn-primary" onClick={props.onAnalyze}
-                        disabled={busy || !props.hasDocument || !props.jobDescription.trim() || props.hasAnalyzed}>
+                        title={hasApiKey ? undefined : 'Add your OpenRouter API key to analyze'}
+                        disabled={busy || !props.hasDocument || !props.jobDescription.trim() || props.hasAnalyzed || !hasApiKey}>
                         {props.operation === 'analyze' ? 'Analyzing...' : props.hasAnalyzed ? 'Analyzed' : 'Analyze'}
                     </button>
                 </div>
