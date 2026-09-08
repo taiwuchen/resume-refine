@@ -1,3 +1,5 @@
+<img src="frontend/public/logo.svg" alt="" width="44" align="left" />
+
 # Resume Refine
 
 An interactive, Grammarly-style resume refinement webapp that helps optimize your resume for specific job descriptions using AI.
